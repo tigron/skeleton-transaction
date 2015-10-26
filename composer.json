@@ -1,0 +1,19 @@
+{
+    "name": "tigron/skeleton-transaction",
+    "description": "Background tasks for skeleton",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tigron BVBA",
+            "email": "support@tigron.be"
+        }
+    ],
+    "support": {
+        "source": "https://github.com/tigron/skeleton-transaction",
+        "issues": "https://github.com/tigron/skeleton-transaction/issues"
+    },
+    "autoload": {
+        "psr-4": { "Skeleton\\Transaction\\": "lib/Skeleton/Transaction/" }
+    }
+}

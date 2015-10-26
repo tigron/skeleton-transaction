@@ -9,6 +9,9 @@
  * @author Christophe Gosiau <christophe@tigron.be>
  * @author David Vandemaele <david@tigron.be>
  */
+
+namespace Skeleton\Transaction;
+
 abstract class Transaction {
 	use \Skeleton\Object\Model;
 	use \Skeleton\Object\Get;
@@ -43,46 +46,18 @@ abstract class Transaction {
 	}
 
 	/**
-	 * Get code
-	 *
-	 * @access public
-	 * @return string $code
-	 */
-	public function get_code() {
-		$code = Util::reflection_get_code($this, 'run');
-		$code = "\n" . $code;
-		return str_replace("\n\t", "\n", $code);
-	}
-
-	/**
-	 * Next run
-	 *
-	 * @access public
-	 * @param string $next_run
-	 */
-	public function next_run($next_run) {
-		if ($this->running_date == '0000-00-00 00:00:00') {
-			$this->running_date = date('Y-m-d H:i:s');
-		}
-
-		$this->running_date = date('Y-m-d H:i:s', strtotime('+ ' . $next_run, strtotime($this->running_date)));
-		$this->recurring = true;
-		$this->recurring_interval = $next_run;
-		$this->save();
-
-		echo 'scheduling next run for ' . $next_run . ', next run on ' . $this->running_date . "\n";
-	}
-
-	/**
 	 * Schedule now
 	 *
 	 * @access public
 	 */
-	public function schedule_now() {
-		if (!$this->recurring) {
-			throw new Exception('Not allowed to schedule a non-recurring transaction manually');
+	public function schedule($time = null) {
+		if ($time === null) {
+			$time = time();
+		} else {
+			$time = strtotime($time);
 		}
-		$this->running_date = date('Y-m-d H:i:s');
+
+		$this->scheduled_at = date('Y-m-d H:i:s', $time);
 		$this->save();
 	}
 
@@ -92,17 +67,12 @@ abstract class Transaction {
 	 * @param string exception that is thrown
 	 * @access public
 	 */
-	public function mark_failed($output, $exception, $date = null) {
-		Util::log_transaction("\n" . 'Transaction ' . $this->id . ' failed: ' . date('Y-m-d H:i:s') . "\n");
-		Util::alarm('Exception in transaction ' . $this->id, $exception);
-		$transaction_log = new Transaction_Log();
+	public function mark_failed($output, $exception) {
+		$transaction_log = new \Skeleton\Transaction\Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = true;
 		$transaction_log->exception = print_r($exception, true);
-		if ($date !== null) {
-			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
-		}
 		$transaction_log->save();
 
 		$this->failed = true;
@@ -117,29 +87,14 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
-		$transaction_log = new Transaction_Log();
+		$transaction_log = new \Skeleton\Transaction\Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = false;
-		if ($date !== null) {
-			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
-		}
 		$transaction_log->save();
 
 		$this->failed = false;
-		if (!$this->recurring) {
-			$this->completed = true;
-		}
 		$this->save();
-	}
-
-	/**
-	 * Cleanup transaction_logs
-	 *
-	 * @access private
-	 */
-	private function cleanup_transaction_logs() {
-		Transaction_Log::cleanup_for_transaction($this);
 	}
 
 	/**
@@ -159,14 +114,10 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_by_id($id) {
-		$db = Database::Get();
-		$trans = $db->getRow('SELECT id, type FROM transaction WHERE id=? ORDER BY id ASC LIMIT 1', array($id));
-		if ($trans === null) {
-			return null;
-		}
-		require_once LIB_PATH . '/model/Transaction/'. str_replace('_', '/', $trans['type']) . '.php';
-		$classname = 'Transaction_'.$trans['type'];
-		$transaction = new $classname($trans['id']);
+		$db = \Skeleton\Database\Database::Get();
+		$classname = $db->get_one('SELECT classname FROM transaction WHERE id=?', [ $id ]);
+		$classname = 'Transaction_' . $classname;
+		$transaction = new $classname($id);
 		return $transaction;
 	}
 
@@ -177,10 +128,10 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_runnable() {
-		$db = Database::Get();
+		$db = \Skeleton\Database\Database::Get();
 
 		$transactions = array();
-		$trans = $db->getCol('SELECT id FROM transaction WHERE running_date < NOW() AND completed=0 AND frozen=0 AND failed=0');
+		$trans = $db->get_column('SELECT id FROM transaction WHERE scheduled_at < NOW() AND completed=0 AND frozen=0 AND failed=0 AND locked=0');
 		foreach ($trans as $id) {
 			$transactions[] = Transaction::get_by_id($id);
 		}

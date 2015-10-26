@@ -16,18 +16,27 @@ Installation via composer:
 
     CREATE TABLE `transaction` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
-      `type` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+      `classname` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
       `created` datetime NOT NULL,
-      `running_date` datetime NOT NULL,
-      `frozen` tinyint(4) NOT NULL DEFAULT '0',
+      `scheduled_at` datetime NOT NULL,
+      `executed_at` datetime NOT NULL,
       `data` text COLLATE utf8_unicode_ci NOT NULL,
-      `completed` tinyint(4) NOT NULL DEFAULT '0',
+      `completed` tinyint(4) NOT NULL,
       `failed` tinyint(4) NOT NULL,
-      `failed_date` datetime NOT NULL,
-      `exception` text COLLATE utf8_unicode_ci NOT NULL,
+      `locked` tinyint(4) NOT NULL,
+      `frozen` tinyint(4) NOT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+
+    CREATE TABLE `transaction_log` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `transaction_id` int(11) NOT NULL,
+      `created` datetime NOT NULL,
+      `output` longtext COLLATE utf8_unicode_ci NOT NULL,
+      `failed` tinyint(4) NOT NULL,
+      `exception` longtext COLLATE utf8_unicode_ci NOT NULL,
       PRIMARY KEY (`id`),
-      KEY `type` (`type`),
-      KEY `running_date` (`running_date`),
-      KEY `completed` (`completed`),
-      KEY `frozen` (`frozen`)
+      KEY `transaction_id` (`transaction_id`),
+      KEY `created` (`created`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

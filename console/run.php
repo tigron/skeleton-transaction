@@ -23,7 +23,7 @@ class Transaction_Run extends \Skeleton\Console\Command {
 	 */
 	protected function configure() {
 		$this->setName('transaction:run');
-		$this->setDescription('Run transactions that are schedules to be executed');
+		$this->setDescription('Run transactions that are scheduled to be executed');
 	}
 
 	/**

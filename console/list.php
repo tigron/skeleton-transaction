@@ -24,7 +24,7 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 */
 	protected function configure() {
 		$this->setName('transaction:list');
-		$this->setDescription('List transactions that are schedules to be executed');
+		$this->setDescription('List transactions that are scheduled to be executed');
 	}
 
 	/**

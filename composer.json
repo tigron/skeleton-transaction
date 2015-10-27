@@ -2,6 +2,10 @@
     "name": "tigron/skeleton-transaction",
     "description": "Background tasks for skeleton",
     "type": "library",
+    "require-dev": {
+	"tigron/skeleton-database": "dev-master",
+	"tigron/skeleton-object": "dev-master"
+    },
     "license": "MIT",
     "authors": [
         {

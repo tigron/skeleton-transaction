@@ -13,7 +13,9 @@
 namespace Skeleton\Transaction;
 
 abstract class Transaction {
-	use \Skeleton\Object\Model;
+	use \Skeleton\Object\Model {
+		__construct as trait_construct;
+	}
 	use \Skeleton\Object\Get;
 	use \Skeleton\Object\Save;
 	use \Skeleton\Object\Delete;
@@ -24,6 +26,19 @@ abstract class Transaction {
 	 * @abstract
 	 */
 	abstract function run();
+
+	/**
+	 * Transaction
+	 *
+	 * @access public
+	 * @param int $id
+	 */
+	public function __construct($id = null) {
+		$classname = get_called_class();
+		$this->classname = substr($classname, strpos($classname, '_') + 1);
+
+		$this->trait_construct($id);
+	}
 
 	/**
 	 * Freeze the transaction

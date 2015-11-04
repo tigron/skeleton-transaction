@@ -29,7 +29,7 @@ class Runner {
 	 public function run() {
 		$transactions = Transaction::get_runnable();
 		foreach ($transactions as $transaction) {
-			$this->run_transaction($transaction);
+			self::run_transaction($transaction);
 		}
 	}
 

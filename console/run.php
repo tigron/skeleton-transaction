@@ -23,7 +23,8 @@ class Transaction_Run extends \Skeleton\Console\Command {
 	 */
 	protected function configure() {
 		$this->setName('transaction:run');
-		$this->setDescription('Run transactions that are scheduled to be executed');
+		$this->setDescription('Run a specific or all transactions that are scheduled to be executed');
+		$this->addArgument('id', InputArgument::OPTIONAL, 'If an id is specified, only this transaction will be executed');
 	}
 
 	/**
@@ -34,7 +35,13 @@ class Transaction_Run extends \Skeleton\Console\Command {
 	 * @param OutputInterface $output
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
-		$transactions = \Skeleton\Transaction\Transaction::get_runnable();
+		$transactions = [];
+		if ($input->getArgument('id')) {
+			$transactions[] = \Skeleton\Transaction\Transaction::get_by_id($input->getArgument('id'));
+		} else {
+			$transactions = \Skeleton\Transaction\Transaction::get_runnable();
+		}
+
 		foreach ($transactions as $transaction) {
 			\Skeleton\Transaction\Runner::run_transaction($transaction);
 			if ($transaction->failed) {

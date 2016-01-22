@@ -56,7 +56,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 		try {
 			$pid = Daemon::start();
 		} catch (\Exception $e) {
-			$output->writeln('<error>' . $e->getMessage() . ': Please specify a valid action: start/stop/status</error>');
+			$output->writeln('<error>' . $e->getMessage() . ': daemon not started</error>');
 			return 1;
 		}
 		$output->writeln('<info>Transaction Daemon is running, pid ' . $pid . '</info>');
@@ -74,7 +74,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 		try {
 			$pid = Daemon::stop();
 		} catch (\Exception $e) {
-			$output->writeln('<error>' . $e->getMessage() . ': Please specify a valid action: start/stop/status</error>');
+			$output->writeln('<error>' . $e->getMessage() . ': daemon not stopped</error>');
 			return 1;
 		}
 		$output->writeln('<info>Transaction Daemon is stopped</info>');
@@ -117,7 +117,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 			return 0;
 		}
 
-		$using_mysql = $dialog->askConfirmation($output, '<question>Are you using MySQL?</question> [Y/n]: ', true);
+		$skeleton_console = $dialog->ask($output, 'Enter the path to your skeletong console [' . realpath($_SERVER['PHP_SELF']) . ']: ', realpath($_SERVER['PHP_SELF']));
 		$systemd_config = $dialog->ask($output, 'Enter the path to your systemd configuration [/etc/systemd/]: ', '/etc/systemd/');
 		$systemd_unitname = $dialog->ask($output, 'Enter the name of the systemd unit [skeleton-transaction]: ', 'skeleton-transaction');
 		$systemd_username = $dialog->ask($output, 'Enter the username to run the daemon as []: ', false);
@@ -143,7 +143,10 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 		$content .= '[Service]' . "\n";
 		$content .= 'User=' . $systemd_username . "\n";
 		$content .= 'Group=' . $systemd_group . "\n";
-		$content .= 'ExecStart=/var/www/measuring.benison.be/util/Transaction_Daemon.php' . "\n";
+		$content .= 'ExecStart=' . $skeleton_console . ' transaction:daemon start' . "\n";
+		$content .= 'ExecStop=' . $skeleton_console . ' transaction:daemon stop' . "\n";
+		$content .= 'PIDFile=' . Config::$pid_file . "\n";
+		$content .= 'RemainAfterExit=yes' . "\n";
 		$content .= "\n";
 		$content .= '[Install]' . "\n";
 		$content .= 'WantedBy=multi-user.target' . "\n";
@@ -163,6 +166,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 
 		file_put_contents($unitfile, $content);
 		symlink($unitfile, $symlink);
+		exec('systemctl daemon-reload');
 
 		$output->writeln('<info>Transaction daemon has been installed</info>');
 		return 0;

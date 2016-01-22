@@ -137,14 +137,8 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 		$content = '';
 		$content .= '[Unit]' . "\n";
 		$content .= 'Description=Skeleton transaction daemon: ' . $systemd_unitname . "\n";
-
-		if ($using_mysql) {
-			$content .= 'Requires=mysql.service' . "\n";
-			$content .= 'After=network-online.target mysql.service' . "\n";
-		} else {
-			$content .= 'After=network-online.target' . "\n";
-		}
-
+		$content .= 'Requires=mysql.service' . "\n";
+		$content .= 'After=network-online.target mysql.service' . "\n";
 		$content .= "\n";
 		$content .= '[Service]' . "\n";
 		$content .= 'User=' . $systemd_username . "\n";

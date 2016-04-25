@@ -3,11 +3,6 @@
  * Transaction Runner
  *
  * This library fetches the runnable transaction and runs them
- *
- * @package KNX-lib
- * @author Gerry Demaret <gerry@tigron.be>
- * @author Christophe Gosiau <christophe@tigron.be>
- * @version $Id: Transaction_Runner.php 793 2013-01-22 10:27:47Z knx-onlineshop $
  */
 
 namespace Skeleton\Transaction;

@@ -14,6 +14,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\Question;
 use \Skeleton\Transaction\Daemon;
 
 class Transaction_Daemon extends \Skeleton\Console\Command {
@@ -105,29 +107,40 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * @param OutputInterface $output
 	 */
 	protected function install(InputInterface $input, OutputInterface $output) {
-		$dialog = $this->getHelper('dialog');
+		$dialog = $this->getHelper('question');
 
 		if (posix_getuid() !== 0){
 			$output->writeln('<error>The installation requires root privileges</error>');
 			return 0;
 		}
 
-		if (!$dialog->askConfirmation($output, '<question>Is this system using systemd?</question> [y/N]: ', false)) {
+		$question = new ConfirmationQuestion('Is this system using systemd? [y/N] ', false);
+
+		if (!$dialog->ask($input, $output, $question)) {
 			$output->writeln('<error>The install command currently only supports systemd</error>');
 			return 0;
 		}
 
-		$skeleton_console = $dialog->ask($output, 'Enter the path to your skeletong console [' . realpath($_SERVER['PHP_SELF']) . ']: ', realpath($_SERVER['PHP_SELF']));
-		$systemd_config = $dialog->ask($output, 'Enter the path to your systemd configuration [/etc/systemd/]: ', '/etc/systemd/');
-		$systemd_unitname = $dialog->ask($output, 'Enter the name of the systemd unit [skeleton-transaction]: ', 'skeleton-transaction');
-		$systemd_username = $dialog->ask($output, 'Enter the username to run the daemon as []: ', false);
+		$question = new Question('Enter the path to your skeleton console [' . realpath($_SERVER['PHP_SELF']) . ']: ', realpath($_SERVER['PHP_SELF']));
+		$skeleton_console = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter the path to your systemd configuration [/etc/systemd/]: ', '/etc/systemd/');
+		$systemd_config = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter the name of the systemd unit [skeleton-transaction]: ', 'skeleton-transaction');
+		$systemd_unitname = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter the username to run the daemon as []:', false);
+		$systemd_username = $dialog->ask($input, $output, $question);
+
 
 		if (!$systemd_username) {
 			$output->writeln('<error>Please provide a username</error>');
 			return 0;
 		}
 
-		$systemd_group = $dialog->ask($output, 'Enter the group to run the daemon as []: ', false);
+		$question = new Question('Enter the group to run the daemon as []:', false);
+		$systemd_group = $dialog->ask($input, $output, $question);
 
 		if (!$systemd_group) {
 			$output->writeln('<error>Please provide a group</error>');
@@ -145,7 +158,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 		$content .= 'Group=' . $systemd_group . "\n";
 		$content .= 'ExecStart=' . $skeleton_console . ' transaction:daemon start' . "\n";
 		$content .= 'ExecStop=' . $skeleton_console . ' transaction:daemon stop' . "\n";
-		$content .= 'PIDFile=' . Config::$pid_file . "\n";
+		$content .= 'PIDFile=' . \Skeleton\Transaction\Config::$pid_file . "\n";
 		$content .= 'RemainAfterExit=yes' . "\n";
 		$content .= "\n";
 		$content .= '[Install]' . "\n";

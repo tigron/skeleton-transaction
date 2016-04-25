@@ -84,6 +84,24 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	}
 
 	/**
+	 * Foreground
+	 *
+	 * Runs the transaction daemon in foreground mode
+	 *
+	 * @access protected
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 */
+	protected function foreground(InputInterface $input, OutputInterface $output) {
+		try {
+			Daemon::run();
+		} catch (\Exception $e) {
+			$output->writeln('<error>' . $e->getMessage() . ': daemon not stopped</error>');
+			return 1;
+		}
+	}
+
+	/**
 	 * Status
 	 *
 	 * @access protected

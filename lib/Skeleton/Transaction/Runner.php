@@ -40,7 +40,9 @@ class Runner {
 
 		$failed = false;
 		try {
+			$transaction->mark_locked();
 			$transaction->run();
+			$transaction->mark_unlocked();
 		} catch (\Exception $e) {
 			$failed = true;
 		}

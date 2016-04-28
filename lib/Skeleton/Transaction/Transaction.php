@@ -77,6 +77,28 @@ abstract class Transaction {
 	}
 
 	/**
+	 * Mark locked
+	 *
+	 * @access public
+	 * @param string $date
+	 */
+	public function mark_locked() {
+		$this->locked = true;
+		$this->save();
+	}
+
+	/**
+	 * Mark unlocked
+	 *
+	 * @access public
+	 * @param string $date
+	 */
+	public function mark_unlocked() {
+		$this->locked = false;
+		$this->save();
+	}
+
+	/**
 	 * Mark this transaction as failed
 	 *
 	 * @param string exception that is thrown

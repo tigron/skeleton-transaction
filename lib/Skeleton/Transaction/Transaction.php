@@ -82,7 +82,7 @@ abstract class Transaction {
 	 * @access public
 	 * @param string $date
 	 */
-	public function mark_locked() {
+	public function lock() {
 		$this->locked = true;
 		$this->save();
 	}
@@ -93,7 +93,7 @@ abstract class Transaction {
 	 * @access public
 	 * @param string $date
 	 */
-	public function mark_unlocked() {
+	public function unlock() {
 		$this->locked = false;
 		$this->save();
 	}

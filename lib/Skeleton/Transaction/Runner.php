@@ -23,8 +23,17 @@ class Runner {
 	 */
 	 public function run() {
 		$transactions = Transaction::get_runnable();
+
+		foreach ($transactions as $transaction) {
+			$transaction->lock();
+		}
+
 		foreach ($transactions as $transaction) {
 			self::run_transaction($transaction);
+		}
+
+		foreach ($transactions as $transaction) {
+			$transaction->un_lock();
 		}
 	}
 
@@ -40,9 +49,7 @@ class Runner {
 
 		$failed = false;
 		try {
-			$transaction->lock();
 			$transaction->run();
-			$transaction->unlock();
 		} catch (\Exception $e) {
 			$failed = true;
 		}

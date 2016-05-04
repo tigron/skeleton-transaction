@@ -13,6 +13,7 @@ Installation via composer:
 
 ## Howto
 
+Run the initial migration or execute the following queries
 
     CREATE TABLE `transaction` (
       `id` int(11) NOT NULL AUTO_INCREMENT,

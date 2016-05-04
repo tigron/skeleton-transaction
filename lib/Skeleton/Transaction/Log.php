@@ -2,13 +2,14 @@
 /**
  * Transaction_Log class
  *
- * @package %%Package%%
  * @author Christophe Gosiau <christophe@tigron.be>
  * @author Gerry Demaret <gerry@tigron.be>
- * @version $Id$
+ * @author David Vandemaele <david@tigron.be>
  */
 
 namespace Skeleton\Transaction;
+
+use \Skeleton\Database\Database;
 
 class Log {
 	use \Skeleton\Object\Model;
@@ -27,13 +28,20 @@ class Log {
 	 * @param Transaction $transaction
 	 * @return array $transaction_logs
 	 */
-	public static function get_by_transaction(Transaction $transaction) {
+	public static function get_by_transaction(Transaction $transaction, $limit = null) {
 		$db = Database::Get();
-		$ids = $db->getCol('SELECT id FROM transaction_log WHERE transaction_id=?', array($transaction->id));
-		$transaction_logs = array();
-		foreach ($ids as $id) {
-			$transaction_logs[] = Transaction_Log::get_by_id($id);
+		if (is_null($limit)) {
+			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id=?', [ $transaction->id ]);
+		} else {
+			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT ' . $limit, [ $transaction->id ]);
+			$ids = array_reverse($ids);
 		}
+
+		$transaction_logs = [];
+		foreach ($ids as $id) {
+			$transaction_logs[] = self::get_by_id($id);
+		}
+
 		return $transaction_logs;
 	}
 
@@ -46,10 +54,11 @@ class Log {
 	 */
 	public static function get_last_by_transaction(Transaction $transaction) {
 		$db = Database::Get();
-		$id = $db->getOne('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1', array($transaction->id));
+		$id = $db->get_one('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1', [ $transaction->id ]);
 		if ($id === null) {
-			throw new Exception('No transaction_log yet');
+			throw new \Exception('No transaction_log yet');
 		}
-		return Transaction_Log::get_by_id($id);;
+
+		return self::get_by_id($id);;
 	}
 }

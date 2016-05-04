@@ -33,7 +33,7 @@ class Runner {
 		}
 
 		foreach ($transactions as $transaction) {
-			$transaction->un_lock();
+			$transaction->unlock();
 		}
 	}
 

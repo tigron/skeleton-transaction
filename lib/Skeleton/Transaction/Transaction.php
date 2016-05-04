@@ -41,6 +41,20 @@ abstract class Transaction {
 	}
 
 	/**
+	 * Get last transaction_log
+	 *
+	 * @access public
+	 * @return Transaction_Log $transaction_log
+	 */
+	public function get_last_transaction_log() {
+		try {
+			return Log::get_last_by_transaction($this);
+		} catch (\Exception $e) {
+			return null;
+		}
+	}
+
+	/**
 	 * Freeze the transaction
 	 *
 	 * @access public
@@ -66,14 +80,35 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function schedule($time = null) {
-		if ($time === null) {
-			$time = time();
-		} else {
-			$time = strtotime($time);
+		if (!$this->recurring) {
+			throw new \Exception('Not allowed to schedule a recurring transaction manually');
 		}
 
-		$this->scheduled_at = date('Y-m-d H:i:s', $time);
+		if ($this->scheduled_at == '0000-00-00 00:00:00' OR $time === null) {
+			$this->scheduled_at = date('Y-m-d H:i:s');
+		}
+
+		if ($time !== null) {
+			$this->scheduled_at = date('Y-m-d H:i:s', strtotime($time, strtotime($this->scheduled_at)));
+		}
+
 		$this->save();
+	}
+
+	/**
+	 * Is scheduled
+	 *
+	 * @access public
+	 * @return bool $scheduled
+	 */
+	public function is_scheduled() {
+		if ($this->completed) {
+			return false;
+		} elseif (strtotime($this->scheduled_at) <= time() AND !$this->locked) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
@@ -104,12 +139,15 @@ abstract class Transaction {
 	 * @param string exception that is thrown
 	 * @access public
 	 */
-	public function mark_failed($output, $exception) {
+	public function mark_failed($output, $exception, $date = null) {
 		$transaction_log = new \Skeleton\Transaction\Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = true;
 		$transaction_log->exception = print_r($exception, true);
+		if ($date !== null) {
+			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
+		}
 		$transaction_log->save();
 
 		$this->failed = true;
@@ -128,9 +166,16 @@ abstract class Transaction {
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = false;
+		if ($date !== null) {
+			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
+		}
 		$transaction_log->save();
 
 		$this->failed = false;
+		if (!$this->recurring) {
+			$this->completed = true;
+		}
+
 		$this->save();
 	}
 
@@ -140,8 +185,8 @@ abstract class Transaction {
 	 * @access public
 	 * @return array $transaction_logs
 	 */
-	public function get_transaction_logs() {
-		return Transaction_Log::get_by_transaction($this);
+	public function get_transaction_logs($limit = null) {
+		return Transaction_Log::get_by_transaction($this, $limit);
 	}
 
 	/**
@@ -167,10 +212,10 @@ abstract class Transaction {
 	public static function get_runnable() {
 		$db = \Skeleton\Database\Database::Get();
 
-		$transactions = array();
+		$transactions = [];
 		$trans = $db->get_column('SELECT id FROM transaction WHERE scheduled_at < NOW() AND completed=0 AND frozen=0 AND failed=0 AND locked=0');
 		foreach ($trans as $id) {
-			$transactions[] = Transaction::get_by_id($id);
+			$transactions[] = self::get_by_id($id);
 		}
 		return $transactions;
 	}

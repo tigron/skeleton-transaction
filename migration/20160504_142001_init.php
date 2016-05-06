@@ -20,23 +20,23 @@ class Migration_20160504_142001_Init extends \Skeleton\Database\Migration {
 	public function up() {
 		$db = Database::get();
 		$db->query("
-			CREATE TABLE `transaction` IF NOT EXISTS (
+			CREATE TABLE IF NOT EXISTS `transaction` (
 				`id` int(11) NOT NULL AUTO_INCREMENT,
 				`classname` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
 				`created` datetime NOT NULL,
-				`scheduled_at` datetime NULL,
+				`scheduled_at` datetime NOT NULL,
+				`executed_at` datetime NOT NULL,
 				`data` text COLLATE utf8_unicode_ci NOT NULL,
-				`recurring` tinyint(4) NOT NULL,
 				`completed` tinyint(4) NOT NULL,
 				`failed` tinyint(4) NOT NULL,
 				`locked` tinyint(4) NOT NULL,
 				`frozen` tinyint(4) NOT NULL,
 				PRIMARY KEY (`id`)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 		");
 
 		$db->query("
-			CREATE TABLE `transaction_log` IF NOT EXISTS (
+			CREATE TABLE IF NOT EXISTS `transaction_log` (
 				`id` int(11) NOT NULL AUTO_INCREMENT,
 				`transaction_id` int(11) NOT NULL,
 				`created` datetime NOT NULL,

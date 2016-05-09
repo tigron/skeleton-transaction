@@ -88,6 +88,10 @@ abstract class Transaction {
 			$this->scheduled_at = date('Y-m-d H:i:s');
 		}
 
+		if (strtotime($this->scheduled_at) < strtotime($time, strtotime($this->scheduled_at))) {
+			$this->scheduled_at = date('Y-m-d H:i:s');
+		}
+
 		if ($time !== null) {
 			$this->scheduled_at = date('Y-m-d H:i:s', strtotime($time, strtotime($this->scheduled_at)));
 		}

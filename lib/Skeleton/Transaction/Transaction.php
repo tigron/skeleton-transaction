@@ -108,7 +108,7 @@ abstract class Transaction {
 	public function is_scheduled() {
 		if ($this->completed) {
 			return false;
-		} elseif (strtotime($this->scheduled_at) <= time() AND !$this->locked) {
+		} elseif (strtotime($this->scheduled_at) >= time() AND !$this->locked) {
 			return true;
 		} else {
 			return false;

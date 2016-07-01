@@ -219,7 +219,7 @@ abstract class Transaction {
 		$transactions = [];
 		$trans = $db->get_column('
 			SELECT id FROM
-				(SELECT id, frozen, failed, locked FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+				(SELECT id, frozen, failed, locked, created FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
 			WHERE 1
 			AND frozen = 0
 			AND failed = 0

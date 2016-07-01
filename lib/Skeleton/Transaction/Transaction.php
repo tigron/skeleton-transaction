@@ -217,7 +217,15 @@ abstract class Transaction {
 		$db = \Skeleton\Database\Database::Get();
 
 		$transactions = [];
-		$trans = $db->get_column('SELECT id FROM transaction WHERE scheduled_at < NOW() AND completed=0 AND frozen=0 AND failed=0 AND locked=0');
+		$trans = $db->get_column('
+			SELECT id FROM
+				(SELECT id, frozen, failed, locked FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+			WHERE 1
+			AND frozen = 0
+			AND failed = 0
+			AND locked = 0
+			ORDER BY created'
+		);
 		foreach ($trans as $id) {
 			$transactions[] = self::get_by_id($id);
 		}

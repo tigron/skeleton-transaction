@@ -80,7 +80,7 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function schedule($time = null) {
-		if (!$this->recurring) {
+		if ($this->recurring) {
 			throw new \Exception('Not allowed to schedule a recurring transaction manually');
 		}
 

@@ -231,4 +231,22 @@ abstract class Transaction {
 		}
 		return $transactions;
 	}
+
+	/**
+	 * Get scheduled transactions
+	 *
+	 * @return array
+	 * @access public
+	 */
+	public static function get_scheduled() {
+		$db = \Skeleton\Database\Database::Get();
+
+		$transactions = [];
+		$trans = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW()', []);
+		foreach ($trans as $id) {
+			$transactions[] = self::get_by_id($id);
+		}
+		return $transactions;
+	}
+
 }

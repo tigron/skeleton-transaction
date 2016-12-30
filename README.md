@@ -11,7 +11,7 @@ Installation via composer:
 
     composer require tigron/skeleton-transaction
 
-## Howto
+## Howto setup
 
 Run the initial migration or execute the following queries
 
@@ -20,13 +20,13 @@ Run the initial migration or execute the following queries
       `classname` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
       `created` datetime NOT NULL,
       `scheduled_at` datetime NOT NULL,
-      `executed_at` datetime NOT NULL,
-      `data` text COLLATE utf8_unicode_ci NOT NULL,
       `completed` tinyint(4) NOT NULL,
       `failed` tinyint(4) NOT NULL,
-      `locked` tinyint(4) NOT NULL,
       `frozen` tinyint(4) NOT NULL,
-      PRIMARY KEY (`id`)
+      `recurring` tinyint(4) NOT NULL,
+      `data` text COLLATE utf8_unicode_ci NOT NULL,
+      `locked` tinyint(4) NOT NULL,
+      PRIMARY KEY (`id`),
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
@@ -41,3 +41,14 @@ Run the initial migration or execute the following queries
       KEY `transaction_id` (`transaction_id`),
       KEY `created` (`created`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+## Howto use
+
+The transaction application can be used in several ways:
+* skeleton transaction:daemon <action>
+  allows to manage transaction daemon, <action> can be:
+   * start
+   * stop
+* skeleton transaction:list
+  lists transactions scheduled for running
+* skeleton transaction:run <transaction_id>

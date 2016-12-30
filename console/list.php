@@ -35,7 +35,27 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 * @param OutputInterface $output
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
-		$transactions = \Skeleton\Transaction\Transaction::get_runnable();
+		$trn_runnable = \Skeleton\Transaction\Transaction::get_runnable();
+		$trn_scheduled = \Skeleton\Transaction\Transaction::get_scheduled();
+
+		$length_id = 0;
+		$length_classname = 0;
+		foreach ($trn_runnable as $trn) {
+			if (strlen($trn->classname) > $length_classname) {
+				$length_classname = strlen($trn->classname);
+			}
+			if (strlen(strval($trn->id)) > $length_id) {
+				$length_id = strlen(strval($trn->id));
+			}
+		}
+		foreach ($trn_scheduled as $trn) {
+			if (strlen($trn->classname) > $length_classname) {
+				$length_classname = strlen($trn->classname);
+			}
+			if (strlen(strval($trn->id)) > $length_id) {
+				$length_id = strlen(strval($trn->id));
+			}
+		}
 
 		$table = new Table($output);
 
@@ -43,8 +63,18 @@ class Transaction_List extends \Skeleton\Console\Command {
 
 		$rows = [];
 
-		foreach ($transactions as $transaction) {
+		foreach ($trn_runnable as $transaction) {
 			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at ];
+		}
+		if (sizeof($trn_runnable) == 0) {
+			$rows[] = [ str_repeat(' ', ($length_id / 2)) . '/', str_repeat(' ', ($length_classname / 2)) . '/', '         /' ];
+		}
+		$rows[] = [ str_repeat('-', $length_id), str_repeat('-', $length_classname), '-------------------' ];
+		foreach ($trn_scheduled as $transaction) {
+			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at ];
+		}
+		if (sizeof($trn_scheduled) == 0) {
+			$rows[] = [ str_repeat(' ', ($length_id / 2)) . '/', str_repeat(' ', ($length_classname / 2)) . '/', '         /' ];
 		}
 		$table->setRows($rows);
 		$table->render();

@@ -50,5 +50,5 @@ The transaction application can be used in several ways:
    * start
    * stop
 * skeleton transaction:list
-  lists transactions scheduled for running
+  lists transactions ready to run and scheduled transactions 
 * skeleton transaction:run <transaction_id>

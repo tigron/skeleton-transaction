@@ -208,6 +208,28 @@ abstract class Transaction {
 	}
 
 	/**
+	 * Get transactions by classname
+	 *
+	 * @param $classname
+	 * @param $limit
+	 * @access public
+	 */
+	public static function get_by_classname($classname, $limit = null) {
+		$db = \Skeleton\Database\Database::Get();
+
+		$transactions = [];
+		if (is_null($limit)) {
+			$trans = $db->get_column('SELECT id FROM transaction WHERE classname=?', [ $classname ]);
+		} else {
+			$trans = $db->get_column('SELECT id FROM transaction WHERE classname=? ORDER BY id DESC LIMIT ?', [ $classname, $limit ]);
+		}
+		foreach ($trans as $id) {
+			$transactions[] = self::get_by_id($id);
+		}
+		return $transactions;
+	}
+
+	/**
 	 * Get runnable transactions
 	 *
 	 * @return array

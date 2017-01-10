@@ -52,3 +52,6 @@ The transaction application can be used in several ways:
 * skeleton transaction:list
   lists transactions ready to run and scheduled transactions 
 * skeleton transaction:run <transaction_id>
+  runs the specified transaction
+* skeleton transaction:log <transaction_id_or_classname>
+  shows log information for last run of specified transaction

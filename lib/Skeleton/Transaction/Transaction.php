@@ -15,9 +15,12 @@ namespace Skeleton\Transaction;
 abstract class Transaction {
 	use \Skeleton\Object\Model {
 		__construct as trait_construct;
+		__get as trait_get;
 	}
 	use \Skeleton\Object\Get;
-	use \Skeleton\Object\Save;
+	use \Skeleton\Object\Save {
+		save as trait_save;
+	}
 	use \Skeleton\Object\Delete;
 
 	/**
@@ -38,6 +41,44 @@ abstract class Transaction {
 		$this->classname = substr($classname, strpos($classname, '_') + 1);
 
 		$this->trait_construct($id);
+	}
+
+	/**
+	 * __get(): return by reference to allow direct modification of the values
+	 * in the data array. Additionally, json_decode 'data' if required.
+	 *
+	 * @access public
+	 * @param string $key
+	 * @param return mixed
+	 */
+	public function &__get($key) {
+		if ($key === 'data') {
+			// If the value in 'data' can be json_decoded, do so before returning
+			// it. It will be encoded again in the save() method.
+			if (json_decode($this->details['data']) !== null) {
+				$this->details['data'] = json_decode($this->details['data'], true);
+			}
+
+			return $this->details['data'];
+		} else {
+			$return =& $this->trait_get($key);
+			return $return;
+		}
+	}
+
+	/**
+	 * save(): ensures 'data' is json_encoded before saving.
+	 *
+	 * @access public
+	 */
+	public function save() {
+		// If 'data' can not be decoded, it means it has been decoded already
+		// and we should encode it again before saving it.
+		if (json_decode($this->details['data']) === null) {
+			$this->details['data'] = json_encode($this->details['data']);
+		}
+
+		$this->trait_save();
 	}
 
 	/**
@@ -179,7 +220,6 @@ abstract class Transaction {
 		if (!$this->recurring) {
 			$this->completed = true;
 		}
-
 		$this->save();
 	}
 
@@ -270,5 +310,4 @@ abstract class Transaction {
 		}
 		return $transactions;
 	}
-
 }

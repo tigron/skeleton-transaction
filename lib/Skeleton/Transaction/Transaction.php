@@ -190,7 +190,7 @@ abstract class Transaction {
 	 * @return array $transaction_logs
 	 */
 	public function get_transaction_logs($limit = null) {
-		return Transaction_Log::get_by_transaction($this, $limit);
+		return \Skeleton\Transaction\Log::get_by_transaction($this, $limit);
 	}
 
 	/**

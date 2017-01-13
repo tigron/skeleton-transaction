@@ -75,7 +75,7 @@ abstract class Transaction {
 	public function save() {
 		// If 'data' can not be decoded, it means it has been decoded already
 		// and we should encode it again before saving it.
-		if (is_array($this->details['data']) or json_decode($this->details['data']) === null) {
+		if (isset($this->details['data']) and (is_array($this->details['data']) or json_decode($this->details['data']) === null)) {
 			$this->details['data'] = json_encode($this->details['data']);
 		}
 
@@ -394,6 +394,4 @@ abstract class Transaction {
 	 */
 	public static function unlock_all() {
 		$db = \Skeleton\Database\Database::Get();
-		$db->query("UPDATE transaction SET locked=0 WHERE locked=1;", []);
-	}
-}
+		$db->query("UPDATE

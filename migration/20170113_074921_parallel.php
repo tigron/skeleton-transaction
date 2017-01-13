@@ -8,7 +8,7 @@ namespace Skeleton\Transaction;
 
 use \Skeleton\Database\Database;
 
-class Migration_20160506_151821_Recurring extends \Skeleton\Database\Migration {
+class Migration_20170113_074921_Parallel extends \Skeleton\Database\Migration {
 
 	/**
 	 * Migrate up

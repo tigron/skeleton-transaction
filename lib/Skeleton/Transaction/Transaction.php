@@ -39,6 +39,7 @@ abstract class Transaction {
 	public function __construct($id = null) {
 		$classname = get_called_class();
 		$this->classname = substr($classname, strpos($classname, '_') + 1);
+		$this->parallel = $this->parallel();
 
 		$this->trait_construct($id);
 	}
@@ -74,7 +75,7 @@ abstract class Transaction {
 	public function save() {
 		// If 'data' can not be decoded, it means it has been decoded already
 		// and we should encode it again before saving it.
-		if (json_decode($this->details['data']) === null) {
+		if (is_array($this->details['data']) or json_decode($this->details['data']) === null) {
 			$this->details['data'] = json_encode($this->details['data']);
 		}
 
@@ -93,6 +94,18 @@ abstract class Transaction {
 		} catch (\Exception $e) {
 			return null;
 		}
+	}
+
+	/**
+	 * parallel()
+	 * Defaults to true, it can be overriden in any transaction and return false
+	 * if the transaction should not be run in parallel.
+	 *
+	 * @access public
+	 * @return bool
+	 */
+	public function parallel() {
+		return true;
 	}
 
 	/**
@@ -270,6 +283,50 @@ abstract class Transaction {
 	}
 
 	/**
+	 * Get first runnable transactions
+	 *
+	 * @return Transaction
+	 * @access public
+	 */
+	public static function get_and_lock_first_runnable($parallel = true) {
+		$db = \Skeleton\Database\Database::Get();
+		$lock_name = 'transaction_runnable';
+
+		// Try ty acquire a lock
+		$lock = (bool)$db->get_one('SELECT GET_LOCK(?, 10)', [$lock_name]);
+
+		// If we didn't get the lock, bail out
+		if ($lock === false) {
+			return null;
+		}
+
+		// We can now safely do our thing
+		$id = $db->get_one('
+			SELECT id FROM
+				(SELECT id, frozen, failed, locked, created, parallel FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+			WHERE 1
+			AND frozen = 0
+			AND failed = 0
+			AND locked = 0
+			AND parallel = ?
+			ORDER BY created
+			LIMIT 1', [ $parallel ]
+		);
+
+		if ($id !== null) {
+			$db->query('UPDATE transaction SET locked=1 WHERE id=?', [ $id ]);
+		}
+
+		$db->query('SELECT RELEASE_LOCK(?)', [$lock_name]);
+
+		if ($id !== null) {
+			return self::get_by_id($id);
+		} else {
+			return null;
+		}
+	}
+
+	/**
 	 * Get runnable transactions
 	 *
 	 * @return array
@@ -288,9 +345,11 @@ abstract class Transaction {
 			AND locked = 0
 			ORDER BY created'
 		);
+
 		foreach ($trans as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
+
 		return $transactions;
 	}
 
@@ -309,5 +368,32 @@ abstract class Transaction {
 			$transactions[] = self::get_by_id($id);
 		}
 		return $transactions;
+	}
+
+	/**
+	 * Get running
+	 *
+	 * @return array
+	 * @access public
+	 */
+	public static function get_running() {
+		$db = \Skeleton\Database\Database::Get();
+
+		$transactions = [];
+		$trans = $db->get_column('SELECT id FROM transaction WHERE locked=1 AND completed=0 ORDER BY parallel ASC', []);
+		foreach ($trans as $id) {
+			$transactions[] = self::get_by_id($id);
+		}
+		return $transactions;
+	}
+
+	/**
+	 * unlock_all()
+	 *
+	 * @access public
+	 */
+	public static function unlock_all() {
+		$db = \Skeleton\Database\Database::Get();
+		$db->query("UPDATE transaction SET locked=0 WHERE locked=1;", []);
 	}
 }

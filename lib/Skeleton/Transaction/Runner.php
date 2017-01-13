@@ -26,13 +26,7 @@ class Runner {
 
 		foreach ($transactions as $transaction) {
 			$transaction->lock();
-		}
-
-		foreach ($transactions as $transaction) {
 			self::run_transaction($transaction);
-		}
-
-		foreach ($transactions as $transaction) {
 			$transaction->unlock();
 		}
 	}

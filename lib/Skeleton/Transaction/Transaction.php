@@ -394,4 +394,6 @@ abstract class Transaction {
 	 */
 	public static function unlock_all() {
 		$db = \Skeleton\Database\Database::Get();
-		$db->query("UPDATE
+		$db->query("UPDATE transaction SET locked=0 WHERE locked=1;", []);
+	}
+}

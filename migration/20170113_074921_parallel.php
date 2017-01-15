@@ -17,9 +17,9 @@ class Migration_20170113_074921_Parallel extends \Skeleton\Database\Migration {
 	 */
 	public function up() {
 		$db = Database::get();
-		$db->query("ALTER TABLE `transaction`
+		/*$db->query("ALTER TABLE `transaction`
 					ADD `parallel` tinyint(4) NOT NULL,
-					ADD `retry_interval` int NOT NULL AFTER `parallel`;");
+					ADD `retry_interval` int NOT NULL AFTER `parallel`;");*/
 	}
 
 	/**

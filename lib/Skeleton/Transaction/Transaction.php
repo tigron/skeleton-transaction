@@ -56,7 +56,7 @@ abstract class Transaction {
 		if ($key === 'data') {
 			// If the value in 'data' can be json_decoded, do so before returning
 			// it. It will be encoded again in the save() method.
-			if (json_decode($this->details['data']) !== null) {
+			if (is_string($this->details['data']) and json_decode($this->details['data']) !== null) {
 				$this->details['data'] = json_decode($this->details['data'], true);
 			}
 

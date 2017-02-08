@@ -134,10 +134,6 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function schedule($time = null) {
-		if (!$this->recurring) {
-			throw new \Exception('Not allowed to schedule a non recurring transaction manually');
-		}
-
 		if ($this->scheduled_at == '0000-00-00 00:00:00' OR $time === null) {
 			$this->scheduled_at = date('Y-m-d H:i:s');
 		}

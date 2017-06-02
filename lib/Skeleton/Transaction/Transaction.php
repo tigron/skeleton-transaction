@@ -24,6 +24,13 @@ abstract class Transaction {
 	use \Skeleton\Object\Delete;
 
 	/**
+	 * Non-persistent rescheduled flag
+	 *
+	 * @var boolean
+	 */
+	private $rescheduled = false;
+
+	/**
 	 * Run transaction
 	 *
 	 * @abstract
@@ -147,6 +154,10 @@ abstract class Transaction {
 		}
 
 		$this->save();
+
+		// Keep a non-persistent flag, so we know not to mark this as completed
+		// later on.
+		$this->rescheduled = true;
 	}
 
 	/**
@@ -216,6 +227,11 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
+		// Don't mark this transaction as completed if it has been rescheduled.
+		if ($this->rescheduled) {
+			return;
+		}
+
 		$transaction_log = new \Skeleton\Transaction\Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;

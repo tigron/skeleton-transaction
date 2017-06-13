@@ -52,14 +52,13 @@ abstract class Transaction {
 	}
 
 	/**
-	 * __get(): return by reference to allow direct modification of the values
-	 * in the data array. Additionally, json_decode 'data' if required.
+	 * __get()
 	 *
 	 * @access public
 	 * @param string $key
 	 * @param return mixed
 	 */
-	public function &__get($key) {
+	public function __get($key) {
 		if ($key === 'data') {
 			// If the value in 'data' can be json_decoded, do so before returning
 			// it. It will be encoded again in the save() method.
@@ -69,7 +68,7 @@ abstract class Transaction {
 
 			return $this->details['data'];
 		} else {
-			$return =& $this->trait_get($key);
+			$return = $this->trait_get($key);
 			return $return;
 		}
 	}

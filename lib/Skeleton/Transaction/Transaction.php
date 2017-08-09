@@ -226,11 +226,6 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
-		// Don't mark this transaction as completed if it has been rescheduled.
-		if ($this->rescheduled) {
-			return;
-		}
-
 		$transaction_log = new \Skeleton\Transaction\Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
@@ -239,6 +234,11 @@ abstract class Transaction {
 			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
 		}
 		$transaction_log->save();
+
+		// Don't mark this transaction as completed if it has been rescheduled.
+		if ($this->rescheduled) {
+			return;
+		}
 
 		$this->failed = false;
 		if (!$this->recurring) {

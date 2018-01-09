@@ -236,7 +236,7 @@ abstract class Transaction {
 		$transaction_log->save();
 
 		// Don't mark this transaction as completed if it has been rescheduled.
-		if ($this->rescheduled) {
+		if ($this->rescheduled or $this->frozen) {
 			return;
 		}
 

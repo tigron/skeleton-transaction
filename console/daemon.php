@@ -84,6 +84,19 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	}
 
 	/**
+	 * Restart
+	 *
+	 * @access protected
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 */
+	protected function restart(InputInterface $input, OutputInterface $output) {
+		$this->stop($input, $output);
+		$this->start($input, $output);
+		return 0;
+	}
+
+	/**
 	 * Foreground
 	 *
 	 * Runs the transaction daemon in foreground mode

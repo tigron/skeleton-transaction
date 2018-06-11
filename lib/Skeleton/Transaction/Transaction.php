@@ -244,6 +244,7 @@ abstract class Transaction {
 		if (!$this->recurring) {
 			$this->completed = true;
 		}
+		$this->retry_attempt = 0;
 		$this->save();
 	}
 

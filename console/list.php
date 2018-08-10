@@ -50,12 +50,27 @@ class Transaction_List extends \Skeleton\Console\Command {
 
 		$rows[] = [ new TableCell('Running', array('colspan' => 4)) ];
 		$rows[] = new TableSeparator();
+		$running_count = 0;
 		foreach ($trn_running as $transaction) {
-			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
+			if ($transaction->parallel == 0) {
+				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
+				$running_count++;
+			}
 		}
-		if (sizeof($trn_running) == 0) {
-			$rows[] = [ '/', '/', '/', '/' ];
+		if ($running_count == 0) {
+			$rows[] = [ 'FREE', 'FREE', 'FREE', 'NO' ];
+			$running_count++;
 		}
+		foreach ($trn_running as $transaction) {
+			if ($transaction->parallel == 1) {
+				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
+				$running_count++;
+			}
+		}
+		for ($i = $running_count; $i < \Skeleton\Transaction\Config::$max_processes; $i++) {
+			$rows[] = [ 'FREE', 'FREE', 'FREE', '' ];
+		}
+
 		$rows[] = new TableSeparator();
 
 		$rows[] = [ new TableCell('Ready to run', array('colspan' => 3)) ];

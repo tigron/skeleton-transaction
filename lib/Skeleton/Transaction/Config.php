@@ -19,5 +19,11 @@ class Config {
 	 */
 	public static $pid_file = '/tmp/skeleton-transaction.pid';
 
-
+	/**
+	 * max processes
+	 *
+	 * @access public
+	 * @var int $max_processes
+	 */
+	public static $max_processes = 5;
 }

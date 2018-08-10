@@ -259,6 +259,30 @@ abstract class Transaction {
 	}
 
 	/**
+	 * Lock current translation
+	 *
+	 * @access public
+	 */
+	public function lock_transaction() {
+		$db = \Skeleton\Database\Database::Get();
+		$lock_name = 'transaction_runnable';
+
+		// Try ty acquire a lock
+		$lock = (bool)$db->get_one('SELECT GET_LOCK(?, 10)', [ $lock_name ]);
+
+		// If we didn't get the lock, bail out
+		if ($lock === false) {
+			throw new Exception("Could not get a lock on the database");
+		}
+
+		// mark transaction locked
+		$db->query('UPDATE transaction SET locked=1 WHERE id=?', [ $this->id ]);
+
+		// unlock transaction
+		$db->query('SELECT RELEASE_LOCK(?)', [ $lock_name ]);
+	}
+
+	/**
 	 * Get transaction by id
 	 *
 	 * @param Transaction id

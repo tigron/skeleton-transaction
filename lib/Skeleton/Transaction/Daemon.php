@@ -34,12 +34,7 @@ class Daemon {
 		$this->max_processes = Config::$max_processes;
 
 		// unlocking all transactions in case the process did not stop properly
-		try {
-			Transaction::unlock_all();
-		} catch (\ErrorException $e) {
-			printf("%s\n", $e->getMessage());
-			die();
-		}
+		Transaction::unlock_all();
 
 		// initializing the processes array to free slots
 		for ($i = 0; $i <= $this->max_processes; $i++) {
@@ -63,6 +58,7 @@ class Daemon {
 			try {
 				$transactions = Transaction::get_runnable();
 			} catch (\ErrorException $e) {
+				// FIXME: this doesn't work as expected, impossible to catch database server off and retry in a second
 				printf("%s\n", $e->getMessage());
 				sleep(1);
 				continue;
@@ -81,7 +77,7 @@ class Daemon {
 						$transaction = $this->get_first_transaction($transactions, true);
 					}
 					if ($transaction != null) {
-printf("Slot %d -> %s (%d)\n", $i, $transaction->classname, $transaction->id);
+//printf("Slot %d -> %s (%d)\n", $i, $transaction->classname, $transaction->id);
 						$sleep = 0; // as the queue of transactions is not empty, we won't sleep
 						\Skeleton\Database\Database::reset();
 						$pid = pcntl_fork();
@@ -189,17 +185,17 @@ printf("Slot %d -> %s (%d)\n", $i, $transaction->classname, $transaction->id);
 						$parallels_free++;
 					}
 				}
-				printf("[x]");
+//printf("[x]");
 			} else {
 				if ($i == 0) {
 					$not_parallel_free++;
 				} else {
 					$parallels_free++;
 				}
-				printf("[ ]");
+//printf("[ ]");
 			}
 		}
-		printf("\n");
+//printf("\n");
 	}
 
 	/**

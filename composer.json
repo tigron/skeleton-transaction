@@ -3,8 +3,12 @@
     "description": "Background tasks for skeleton",
     "type": "library",
     "require-dev": {
-	"tigron/skeleton-database": "dev-master",
-	"tigron/skeleton-object": "dev-master"
+		"tigron/skeleton-database": "dev-master",
+		"tigron/skeleton-object": "dev-master"
+    },
+    "require": {
+		"tigron/skeleton-object": ">=0.1.18",
+		"tigron/skeleton-database": ">=0.1.4"
     },
     "license": "MIT",
     "authors": [

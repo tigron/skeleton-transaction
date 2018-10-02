@@ -44,6 +44,7 @@ class Transaction_Run extends \Skeleton\Console\Command {
 
 		foreach ($transactions as $transaction) {
 			\Skeleton\Transaction\Runner::run_transaction($transaction);
+			$transaction = \Skeleton\Transaction\Transaction::get_by_id($transaction->id);
 			if ($transaction->failed) {
 				$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<error>error</error>');
 			} else {

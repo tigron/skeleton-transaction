@@ -44,6 +44,8 @@ class Runner {
 		$failed = false;
 		try {
 			$transaction->run();
+		} catch (\Throwable $e) {
+			$failed = true;
 		} catch (\Exception $e) {
 			$failed = true;
 		}

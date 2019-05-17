@@ -8,7 +8,7 @@ namespace Skeleton\Transaction;
 
 use \Skeleton\Database\Database;
 
-class Migration_20190517_150000 extends \Skeleton\Database\Migration {
+class Migration_20190517_150000_More_Indexes extends \Skeleton\Database\Migration {
 
 	/**
 	 * Migrate up

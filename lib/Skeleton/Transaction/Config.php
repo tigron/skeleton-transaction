@@ -25,5 +25,23 @@ class Config {
 	 * @access public
 	 * @var int $max_processes
 	 */
-	public static $max_processes = 5;
+	public static $max_processes = 10;
+
+	/**
+	 * Log file
+	 *
+	 * @access public
+	 * @var string $log_file
+	 */
+	public static $monitor_file = '/tmp/skeleton-transaction.status';
+
+	/**
+	 * Monitor authentication header
+	 *
+	 * x-authentication
+	 *
+	 * @access public
+	 * @var string $monitor_authentication
+	 */
+	public static $monitor_authentication = null;
 }

@@ -56,12 +56,15 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 */
 	protected function start(InputInterface $input, OutputInterface $output) {
 		try {
-			$pid = Daemon::start();
+			ob_start();
+			Daemon::start();
+			$content = ob_get_contents();
+			ob_end_clean();
 		} catch (\Exception $e) {
 			$output->writeln('<error>' . $e->getMessage() . ': daemon not started</error>');
 			return 1;
 		}
-		$output->writeln('<info>Transaction Daemon is running, pid ' . $pid . '</info>');
+		$output->writeln('<info>' . $content . '</info>');
 		return 0;
 	}
 
@@ -122,11 +125,19 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * @param OutputInterface $output
 	 */
 	protected function status(InputInterface $input, OutputInterface $output) {
-		if (Daemon::is_running()) {
-			$output->writeln('<info>Transaction Daemon is running</info>');
-		} else {
-			$output->writeln('<error>Transaction Daemon is not running</error>');
+		$status = Daemon::status();
+		$table = new Table($output);
+
+		$table->setHeaders(['Check', 'Result', 'Message']);
+
+		$rows = [];
+		foreach ($status as $key => $state) {
+			$rows[] = [ $key, $state['result'], $state['message'] ];
 		}
+
+		$table->setRows($rows);
+		$table->render();
+
 		return 0;
 	}
 

@@ -259,30 +259,6 @@ abstract class Transaction {
 	}
 
 	/**
-	 * Lock current translation
-	 *
-	 * @access public
-	 */
-	public function lock_transaction() {
-		$db = \Skeleton\Database\Database::Get();
-		$lock_name = 'transaction_runnable';
-
-		// Try ty acquire a lock
-		$lock = (bool)$db->get_one('SELECT GET_LOCK(?, 10)', [ $lock_name ]);
-
-		// If we didn't get the lock, bail out
-		if ($lock === false) {
-			throw new Exception("Could not get a lock on the database");
-		}
-
-		// mark transaction locked
-		$db->query('UPDATE transaction SET locked=1 WHERE id=?', [ $this->id ]);
-
-		// unlock transaction
-		$db->query('SELECT RELEASE_LOCK(?)', [ $lock_name ]);
-	}
-
-	/**
 	 * Get transaction by id
 	 *
 	 * @param Transaction id
@@ -308,58 +284,14 @@ abstract class Transaction {
 
 		$transactions = [];
 		if (is_null($limit)) {
-			$trans = $db->get_column('SELECT id FROM transaction WHERE classname=?', [ $classname ]);
+			$ids = $db->get_column('SELECT id FROM transaction WHERE classname=?', [ $classname ]);
 		} else {
-			$trans = $db->get_column('SELECT id FROM transaction WHERE classname=? ORDER BY id DESC LIMIT ?', [ $classname, $limit ]);
+			$ids = $db->get_column('SELECT id FROM transaction WHERE classname=? ORDER BY id DESC LIMIT ?', [ $classname, $limit ]);
 		}
-		foreach ($trans as $id) {
+		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
 		return $transactions;
-	}
-
-	/**
-	 * Get first runnable transactions
-	 *
-	 * @return Transaction
-	 * @access public
-	 */
-	public static function get_and_lock_first_runnable($parallel = true) {
-		$db = \Skeleton\Database\Database::Get();
-		$lock_name = 'transaction_runnable';
-
-		// Try ty acquire a lock
-		$lock = (bool)$db->get_one('SELECT GET_LOCK(?, 10)', [$lock_name]);
-
-		// If we didn't get the lock, bail out
-		if ($lock === false) {
-			return null;
-		}
-
-		// We can now safely do our thing
-		$id = $db->get_one('
-			SELECT id FROM
-				(SELECT id, frozen, failed, locked, created, parallel FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
-			WHERE 1
-			AND frozen = 0
-			AND failed = 0
-			AND locked = 0
-			AND parallel = ?
-			ORDER BY created
-			LIMIT 1', [ $parallel ]
-		);
-
-		if ($id !== null) {
-			$db->query('UPDATE transaction SET locked=1 WHERE id=?', [ $id ]);
-		}
-
-		$db->query('SELECT RELEASE_LOCK(?)', [$lock_name]);
-
-		if ($id !== null) {
-			return self::get_by_id($id);
-		} else {
-			return null;
-		}
 	}
 
 	/**
@@ -372,21 +304,42 @@ abstract class Transaction {
 		$db = \Skeleton\Database\Database::Get();
 
 		$transactions = [];
-		$trans = $db->get_column('
+		$ids = $db->get_column('
 			SELECT id FROM
 				(SELECT id, frozen, failed, locked, created FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
 			WHERE 1
 			AND frozen = 0
 			AND failed = 0
 			AND locked = 0
-			ORDER BY created'
-		);
+		');
 
-		foreach ($trans as $id) {
+		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
 
 		return $transactions;
+	}
+
+	/**
+	 * Get runnable transactions
+	 *
+	 * @return array
+	 * @access public
+	 */
+	public static function count_runnable() {
+		$db = \Skeleton\Database\Database::Get();
+
+		$transactions = [];
+		$count = $db->get_one('
+			SELECT count(*) FROM
+				(SELECT id, frozen, failed, locked, created FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+			WHERE 1
+			AND frozen = 0
+			AND failed = 0
+			AND locked = 0
+		');
+
+		return $count;
 	}
 
 	/**
@@ -399,8 +352,8 @@ abstract class Transaction {
 		$db = \Skeleton\Database\Database::Get();
 
 		$transactions = [];
-		$trans = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW()', []);
-		foreach ($trans as $id) {
+		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW()', []);
+		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
 		return $transactions;
@@ -414,10 +367,10 @@ abstract class Transaction {
 	 */
 	public static function get_running() {
 		$db = \Skeleton\Database\Database::Get();
+		$ids = $db->get_column('SELECT id FROM transaction WHERE locked=1 AND completed=0 ORDER BY parallel ASC', []);
 
 		$transactions = [];
-		$trans = $db->get_column('SELECT id FROM transaction WHERE locked=1 AND completed=0 ORDER BY parallel ASC', []);
-		foreach ($trans as $id) {
+		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
 		return $transactions;
@@ -431,5 +384,21 @@ abstract class Transaction {
 	public static function unlock_all() {
 		$db = \Skeleton\Database\Database::Get();
 		$db->query("UPDATE transaction SET locked=0 WHERE locked=1;", []);
+	}
+
+	/**
+	 * Get failed recurring
+	 *
+	 * @access public
+	 * @return array $transactions
+	 */
+	public static function get_failed_recurring() {
+		$db = \Skeleton\Database\Database::get();
+		$ids = $db->get_column('SELECT id FROM transaction WHERE recurring=1 AND (failed=1 OR completed=1)', []);
+		$transactions = [];
+		foreach ($ids as $id) {
+			$transactions[] = self::get_by_id($id);
+		}
+		return $transactions;
 	}
 }

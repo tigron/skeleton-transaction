@@ -25,99 +25,272 @@ class Daemon {
 	private $processes = [];
 
 	/**
-	 * Run
+	 * Flags
+	 *
+	 * @access private
+	 * @var boolean $flag_stop
+	 */
+	private $flag_stop = false;
+
+	/**
+	 * lock_timestamp
+	 *
+	 * @access private
+	 * @var $lock_timestamp
+	 */
+	private $lock_timestamp = null;
+
+	/**
+	 * Constructor
+	 *
+	 * @access private
+	 */
+	public function __construct() {
+		if (self::is_running()) {
+			throw new \Exception('Transaction daemon already running');
+		}
+
+		/**
+		 * Get lock file
+		 */
+		$this->get_lock();
+
+		/**
+		 * Install the signal handlers
+		 */
+		$this->install_signal_handlers();
+
+		/**
+		 * Provision the processes
+		 */
+		$this->max_processes = Config::$max_processes;
+		for ($i = 0; $i < $this->max_processes; $i++) {
+			$this->processes[$i] = new Process();
+		}
+
+		// unlocking all transactions in case the process did not stop properly
+		Transaction::unlock_all();
+	}
+
+	/**
+	 * Run the daemon
 	 *
 	 * @access public
 	 */
 	public function run() {
-		// initializing
-		$this->max_processes = Config::$max_processes;
+		$run = true;
+		while ($run) {
+			pcntl_signal_dispatch();
+			$this->refresh_lock();
 
-		// unlocking all transactions in case the process did not stop properly
-		Transaction::unlock_all();
-
-		// initializing the processes array to free slots
-		for ($i = 0; $i <= $this->max_processes; $i++) {
-			$this->processes[$i] = -1;
-		}
-
-		// run forever
-		while (true) {
-
-			// counters for parallels and non-parallel transactions
-			$not_parallel_free = 0;
-			$parallels_free = 0;
-
-			// cleaning processes array before to begin
-			$this->clean_slots($not_parallel_free, $parallels_free);
-			while ($not_parallel_free + $parallels_free == 0) {				// if all slots are used then sleep
-				usleep(100000);												// for 1/10 second and see if one or
-				$this->clean_slots($not_parallel_free, $parallels_free);	// more slot got freed
+			/**
+			 * If we are stopping, don't start new processes
+			 */
+			if ($this->flag_stop) {
+				$run = false;
+				continue;
 			}
 
 			try {
-				$transactions = Transaction::get_runnable();
-			} catch (\ErrorException $e) {
-				// FIXME: this doesn't work as expected, impossible to catch database server off and retry in a second
-				printf("%s\n", $e->getMessage());
+				$process = $this->get_idle_process();
+			} catch (\Exception $e) {
+				/**
+				 * No processes available
+				 * Let's wait 10 seconds
+				 */
 				sleep(1);
 				continue;
 			}
-			if (count($transactions) == 0) {	// if there is no transaction to
-				sleep(1);						// process then sleep for a second
-				continue;						// and start over
-			}
 
-			// testing every slot and if empty looking for a transaction to start
-			for ($i = 0; $i < $this->max_processes; $i++) {
-				if ($this->is_slot_free($i)) {
-					if ($i == 0) {
-						$transaction = $this->get_first_transaction($transactions, false);
-					} else {
-						$transaction = $this->get_first_transaction($transactions, true);
-					}
-					if ($transaction != null) {
-//printf("Slot %d -> %s (%d)\n", $i, $transaction->classname, $transaction->id);
-						$sleep = 0; // as the queue of transactions is not empty, we won't sleep
-						\Skeleton\Database\Database::reset();
-						$pid = pcntl_fork();
-						if ($pid == -1) {
-							die('Could not fork');
-						} else if ($pid) {
-							// PARENT
-							$this->lock_slot($i, $pid);
-						} else {
-							// CHILD
-							cli_set_process_title(strtolower($transaction->classname) . ' (' . $transaction->id . ')');
-							$runner = new Runner();
-							$runner->run_transaction($transaction);
-							$transaction->unlock();
-							exit;
-						}
+			$transactions = Transaction::get_runnable();
+
+			// If we are running a serial process, prevent a new serial from starting
+			if ($this->serial_running()) {
+				foreach ($transactions as $key => $transaction) {
+					if (!$transaction->parallel) {
+						unset($transactions[$key]);
 					}
 				}
 			}
+
+			// We have an idle process, try to load a transaction
+			if (count($transactions) == 0) {
+				sleep(1);
+				continue;
+			}
+
+			$transaction = array_shift($transactions);
+			$process->load_transaction($transaction);
+			$process->run();
 		}
+		$this->teardown();
+	}
+
+	private function teardown() {
+		/**
+		 * Waiting for all processes to be terminated
+		 */
+		while ($this->transactions_running()) {
+			// Wait 0.5 seconds
+			usleep(500000);
+		}
+
+		/**
+		 * Remove the PID file
+		 */
+		$this->remove_lock();
 	}
 
 	/**
-	 * public static function running
+	 * Install signal handlers
+	 *
+	 * @access private
+	 */
+	private function install_signal_handlers() {
+		/**
+		 * Graceful shutdown
+		 */
+		pcntl_signal(SIGINT, [$this, 'handle_stop'] );
+		pcntl_signal(SIGTERM, [$this, 'handle_stop'] );
+	}
+
+	/**
+	 * Handle the stop signal
+	 *
+	 * @access private
+	 */
+	private function handle_stop() {
+		$this->flag_stop = true;
+	}
+
+	/**
+	 * Check if a serial transaction is running
+	 *
+	 * @access private
+	 * @return bool $serial_running
+	 */
+	private function serial_running() {
+		$serial_running = false;
+		foreach ($this->processes as $process) {
+			if ($process->is_running() and !$process->is_parallel()) {
+				$serial_running = true;
+			}
+		}
+		return $serial_running;
+	}
+
+	/**
+	 * Check if a transaction is running
+	 *
+	 * @access private
+	 * @return bool $transaction_running
+	 */
+	private function transactions_running() {
+		foreach ($this->processes as $process) {
+			if ($process->is_running()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get an idle process
+	 *
+	 * @access private
+	 * @return Process $process;
+	 */
+	private function get_idle_process() {
+		foreach ($this->processes as $key => $process) {
+			if (!$process->is_running()) {
+				return $process;
+			}
+		}
+		throw new \Exception('No idle processes');
+	}
+
+	/**
+	 * Get the lock
+	 *
+	 * @acces private
+	 */
+	private function get_lock() {
+		if (self::is_running()) {
+			throw new Exception('Impossible to get lock, is Transaction Daemon already running?');
+		}
+
+		$pid_file = Config::$pid_file;
+		file_put_contents(Config::$pid_file, getmypid());
+
+		$this->lock_timestamp = time();
+	}
+
+	/**
+	 * Refresh lock
 	 *
 	 * @access public
-	 * @return bool $running
 	 */
-	public static function is_running() {
+	public function refresh_lock() {
 		if (!file_exists(Config::$pid_file)) {
-			return false;
+			throw new Exception('Problem with lock: Lock file does not exist');
 		}
 
-		$pid = file_get_contents(Config::$pid_file);
-		if (posix_getpgid($pid) === false) {
-			unlink(Config::$pid_file);
-			return false;
+		$lock_pid = file_get_contents(Config::$pid_file);
+		if ($lock_pid != getmypid()) {
+			throw new Exception('Problem with lock: Pid in lock is not ours');
 		}
 
-		return true;
+		if (time() - $this->lock_timestamp <=5) {
+			return;
+		}
+
+		$pid_file = Config::$pid_file;
+		file_put_contents(Config::$pid_file, getmypid());
+
+		$this->lock_timestamp = time();
+
+		$this->monitor();
+	}
+
+	/**
+	 * Monitor the Daemon
+	 *
+	 * @access private
+	 */
+	private function monitor() {
+		$monitor = new Monitor();
+		$monitor->run();
+	}
+
+	/**
+	 * Remove lock
+	 *
+	 * @acces private
+	 */
+	private function remove_lock() {
+		if (!file_exists(Config::$pid_file)) {
+			throw new Exception('Problem with lock: Lock file does not exist');
+		}
+
+		$lock_pid = file_get_contents(Config::$pid_file);
+		if ($lock_pid != getmypid()) {
+			throw new \Exception('Problem with lock: Pid in lock is not ours ' . $lock_pid . ' ' . getmypid());
+		}
+
+		unlink(Config::$pid_file);
+
+		$this->lock_timestamp = null;
+	}
+
+	/**
+	 * Get status
+	 *
+	 * @access public
+	 * @return array $status
+	 */
+	public static function status() {
+		$status = file_get_contents(Config::$monitor_file);
+		return json_decode($status, true);
 	}
 
 	/**
@@ -129,12 +302,12 @@ class Daemon {
 		if (self::is_running()) {
 			throw new \Exception('Transaction daemon is already running');
 		}
+
 		$pid = pcntl_fork();
 		if ($pid == -1) {
 			throw new \Exception('Error while forking');
 		} elseif ($pid) {
-			file_put_contents(Config::$pid_file, $pid);
-			return $pid;
+			echo 'Daemon started, PID: ' . $pid . "\n";
 		} else {
 			// Child
 			$daemon = new self();
@@ -153,110 +326,35 @@ class Daemon {
 		}
 
 		$pid = file_get_contents(Config::$pid_file);
-		$return = posix_kill($pid, 15);
+		$return = posix_kill($pid, SIGTERM);
+		echo 'Stopping daemon' . "\n";
+
 		if ($return === false) {
 			throw new \Exception('Unable to kill daemon');
 		}
-		Transaction::unlock_all();
+
+		echo 'Waiting for transactions to finish' . "\n";
+
+		while (self::is_running()) {
+			usleep(500000);
+		}
+
+		echo 'Daemon stopped' . "\n";
+
 		return true;
 	}
 
 	/**
-	 * clean_slots
+	 * public static function running
 	 *
-	 * @access private
-	 * @param &$not_parallel_free
-	 * @param &$parallels_free
+	 * @access public
+	 * @return bool $running
 	 */
-	private function clean_slots(&$not_parallel_free, &$parallels_free) {
-		$not_parallel_free = 0;
-		$parallels_free = 0;
-		for ($i = 0; $i < $this->max_processes; $i++) {
-			// test if slot is used
-			if ($this->processes[$i] >= 0) {
-				$status = 0;
-				// test if the process has finished (if true the freeing slot)
-				$rc = pcntl_waitpid($this->processes[$i], $status, WNOHANG);
-				if ($rc == $this->processes[$i]) {
-					$this->free_slot($i);
-					if ($i == 0) {
-						$not_parallel_free++;
-					} else {
-						$parallels_free++;
-					}
-				}
-//printf("[x]");
-			} else {
-				if ($i == 0) {
-					$not_parallel_free++;
-				} else {
-					$parallels_free++;
-				}
-//printf("[ ]");
-			}
+	public static function is_running() {
+		if (!file_exists(Config::$pid_file)) {
+			return false;
 		}
-//printf("\n");
-	}
 
-	/**
-	 * get_slot()
-	 *
-	 * @access private
-	 * @return position (-1 if full)
-	 */
-	private function get_slot() {
-		for ($i = 0; $i < $this->max_processes; $i++) {
-			if ($this->processes[$i] == -1) {
-				return $i;
-			}
-		}
-		return -1;
-	}
-
-	/**
-	 * lock_slot()
-	 *
-	 * @access private
-	 * @param id
-	 */
-	private function lock_slot($id, $pid) {
-		$this->processes[$id] = $pid;
-	}
-
-	/**
-	 * free_slot()
-	 *
-	 * @access private
-	 * @param id
-	 */
-	private function free_slot($id) {
-		$this->processes[$id] = -1;
-	}
-
-	/**
-	 * Check the status of a given slot
-	 *
-	 * @access private
-	 * @param id
-	 */
-	private function is_slot_free($id) {
-		return $this->processes[$id] == -1;
-	}
-
-	/**
-	 * Check the status of a given slot
-	 *
-	 * @access private
-	 * @param id
-	 */
-	private function get_first_transaction(&$transactions, $parallel) {
-		foreach ($transactions as $key => $transaction) {
-			if ($transaction->parallel == $parallel) {
-				unset($transactions[$key]);
-				$transaction->lock_transaction();
-				return $transaction;
-			}
-		}
-		return null;
+		return true;
 	}
 }

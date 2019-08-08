@@ -61,4 +61,19 @@ class Log {
 
 		return self::get_by_id($id);;
 	}
+
+	/**
+	 * Get last successful
+	 *
+	 * @access public
+	 */
+	public static function get_last_successful() {
+		$db = Database::Get();
+		$id = $db->get_one('SELECT id FROM transaction_log WHERE failed=0 ORDER BY created DESC LIMIT 1', [ ]);
+		if ($id === null) {
+			throw new \Exception('No transaction_log yet');
+		}
+
+		return self::get_by_id($id);;
+	}
 }

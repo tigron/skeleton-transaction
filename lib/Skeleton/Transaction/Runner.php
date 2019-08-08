@@ -17,21 +17,6 @@ class Runner {
 	public function __construct() { }
 
 	/**
-	 * Run transactions
-	 *
-	 * @access public
-	 */
-	 public function run() {
-		$transactions = Transaction::get_runnable();
-
-		foreach ($transactions as $transaction) {
-			$transaction->lock();
-			self::run_transaction($transaction);
-			$transaction->unlock();
-		}
-	}
-
-	/**
 	 * Run transaction, acquire one if none set
 	 *
 	 * @access private
@@ -45,8 +30,6 @@ class Runner {
 		try {
 			$transaction->run();
 		} catch (\Throwable $e) {
-			$failed = true;
-		} catch (\Exception $e) {
 			$failed = true;
 		}
 		echo "\n";

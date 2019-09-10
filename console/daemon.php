@@ -110,7 +110,8 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 */
 	protected function foreground(InputInterface $input, OutputInterface $output) {
 		try {
-			Daemon::run();
+			$daemon = new Daemon();
+			$daemon->run();
 		} catch (\Exception $e) {
 			$output->writeln('<error>' . $e->getMessage() . ': daemon not stopped</error>');
 			return 1;

@@ -104,12 +104,25 @@ class Monitor {
 	 * @access private
 	 */
 	private function handle_last_successful() {
-		$log = \Skeleton\Transaction\Log::get_last_successful();
-		$result = [
+		try {
+			$log = \Skeleton\Transaction\Log::get_last_successful();
+		} catch (\Exception $e) {
+			// If the transaction log is completely empty, you are probably running
+			// the daemon for the first time.
+			$this->result['last_successful'] = [
+				'result' => '0000-00-00 00:00:00',
+				'message' => 'Transaction log is empty',
+			];
+
+			return;
+		}
+
+		$transaction = Transaction::get_by_id($log->transaction_id);
+
+		$this->result['last_successful'] = [
 			'result' => $log->created,
-			'message' => 'Transaction ' . $log->transaction_id . ': ' . $log->transaction->classname,
+			'message' => 'Transaction ' . $log->transaction_id . ': ' . $transaction->classname,
 		];
-		$this->result['last_successful'] = $result;
 	}
 
 	/**

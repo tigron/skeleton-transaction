@@ -216,7 +216,7 @@ class Daemon {
 	 */
 	private function get_lock() {
 		if (self::is_running()) {
-			throw new Exception('Impossible to get lock, is Transaction Daemon already running?');
+			throw new \Exception('Impossible to get lock, is Transaction Daemon already running?');
 		}
 
 		$pid_file = Config::$pid_file;
@@ -232,12 +232,12 @@ class Daemon {
 	 */
 	public function refresh_lock() {
 		if (!file_exists(Config::$pid_file)) {
-			throw new Exception('Problem with lock: Lock file does not exist');
+			throw new \Exception('Problem with lock: Lock file does not exist');
 		}
 
 		$lock_pid = file_get_contents(Config::$pid_file);
 		if ($lock_pid != getmypid()) {
-			throw new Exception('Problem with lock: Pid in lock is not ours');
+			throw new \Exception('Problem with lock: Pid in lock is not ours');
 		}
 
 		if (time() - $this->lock_timestamp <=5) {
@@ -269,7 +269,7 @@ class Daemon {
 	 */
 	private function remove_lock() {
 		if (!file_exists(Config::$pid_file)) {
-			throw new Exception('Problem with lock: Lock file does not exist');
+			throw new \Exception('Problem with lock: Lock file does not exist');
 		}
 
 		$lock_pid = file_get_contents(Config::$pid_file);

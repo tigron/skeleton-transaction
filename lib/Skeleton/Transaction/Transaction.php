@@ -306,12 +306,19 @@ abstract class Transaction {
 		$transactions = [];
 		$ids = $db->get_column('
 			SELECT id FROM
-				(SELECT id, frozen, failed, locked, created FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+				(	SELECT id, frozen, failed, locked, created, scheduled_at
+					FROM transaction
+					WHERE 1
+					AND scheduled_at < NOW()
+					AND completed = 0
+				) AS transaction
 			WHERE 1
 			AND frozen = 0
 			AND failed = 0
 			AND locked = 0
-		');
+			ORDER BY scheduled_at, id
+			LIMIT ?
+		', [ Config::$max_processes ] );
 
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);

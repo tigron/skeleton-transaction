@@ -182,8 +182,20 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function lock() {
+		$db = \Skeleton\Database\Database::Get();
+		$db->get_lock('runnable');
+
+		// refresh the current object's details before verifying the lock status
+		$this->get_details();
+
+		if ($this->locked) {
+			throw new Exception\Locked();
+		}
+
 		$this->locked = true;
 		$this->save();
+
+		$db->release_lock('runnable');
 	}
 
 	/**

@@ -83,9 +83,7 @@ class Daemon {
 			pcntl_signal_dispatch();
 			$this->refresh_lock();
 
-			/**
-			 * If we are stopping, don't start new processes
-			 */
+			// If we are stopping, don't start new processes
 			if ($this->flag_stop) {
 				$run = false;
 				continue;
@@ -94,10 +92,7 @@ class Daemon {
 			try {
 				$process = $this->get_idle_process();
 			} catch (\Exception $e) {
-				/**
-				 * No processes available
-				 * Let's wait 10 seconds
-				 */
+				// No processes available, sleep for a bit and try again
 				sleep(1);
 				continue;
 			}
@@ -113,14 +108,21 @@ class Daemon {
 				}
 			}
 
-			// We have an idle process, try to load a transaction
+			// We have an idle process, try to load a transaction if there is one
 			if (count($transactions) == 0) {
 				sleep(1);
 				continue;
 			}
 
 			$transaction = array_shift($transactions);
-			$process->load_transaction($transaction);
+
+			try {
+				$process->load_transaction($transaction);
+			} catch (Exception\Locked $e) {
+				// If the transaction has been locked by another thread, bail out
+				continue;
+			}
+
 			$process->run();
 		}
 		$this->teardown();

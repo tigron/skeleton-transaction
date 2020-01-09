@@ -189,6 +189,7 @@ abstract class Transaction {
 		$this->get_details();
 
 		if ($this->locked) {
+			$db->release_lock('runnable');
 			throw new Exception\Locked();
 		}
 

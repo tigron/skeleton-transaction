@@ -44,9 +44,9 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	/**
 	 * Check database connection
 	 *
-	 * @access private
+	 * @access protected
 	 */
-	private function check_database($check) {
+	protected function check_database($check) {
 		if (!$check['result']) {
 			return 500;
 		}
@@ -55,9 +55,9 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	/**
 	 * Check database connection
 	 *
-	 * @access private
+	 * @access protected
 	 */
-	private function check_recurring($check) {
+	protected function check_recurring($check) {
 		if ($check['result'] > 0) {
 			return 400;
 		}
@@ -66,9 +66,9 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	/**
 	 * Check database connection
 	 *
-	 * @access private
+	 * @access protected
 	 */
-	private function check_last_update($check) {
+	protected function check_last_update($check) {
 		$last_update = strtotime($check['result']);
 		if ($last_update === false) {
 			return 500;
@@ -82,9 +82,9 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	/**
 	 * Check runnable
 	 *
-	 * @access private
+	 * @access protected
 	 */
-	private function check_runnable($check) {
+	protected function check_runnable($check) {
 		if ($check['result'] > 500) {
 			return 400;
 		}
@@ -93,9 +93,9 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	/**
 	 * Check last successful
 	 *
-	 * @access private
+	 * @access protected
 	 */
-	private function check_last_successful($check) {
+	protected function check_last_successful($check) {
 		$last_successful = strtotime($check['result']);
 		if ($last_successful === false) {
 			return 400;

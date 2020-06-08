@@ -140,7 +140,7 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function schedule($time = null) {
-		if ($this->scheduled_at == '0000-00-00 00:00:00' OR $time === null) {
+		if (empty($this->scheduled_at) || empty($time)) {
 			$this->scheduled_at = date('Y-m-d H:i:s');
 		}
 
@@ -148,7 +148,7 @@ abstract class Transaction {
 			$this->scheduled_at = date('Y-m-d H:i:s');
 		}
 
-		if ($time !== null) {
+		if (!empty($time)) {
 			$this->scheduled_at = date('Y-m-d H:i:s', strtotime($time, strtotime($this->scheduled_at)));
 		}
 

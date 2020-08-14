@@ -312,7 +312,7 @@ class Daemon {
 			echo 'Daemon started, PID: ' . $pid . "\n";
 		} else {
 			// Child
-			$title = realpath($_SERVER['PWD'] . '/' . $_SERVER['SCRIPT_FILENAME']) . ' transaction:daemon';
+			$title = realpath(getcwd() . '/' . $_SERVER['SCRIPT_FILENAME']) . ' transaction:daemon';
 			\cli_set_process_title($title);			
 			$daemon = new self();
 			$daemon->run();

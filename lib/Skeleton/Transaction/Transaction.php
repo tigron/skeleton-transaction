@@ -231,18 +231,10 @@ abstract class Transaction {
 		$this->completed = true;
 		$this->save();
 
-		// Send exception to Sentry if configured
-		if (class_exists('\Skeleton\Error\Handler') && !empty(\Skeleton\Error\Config::$sentry_dsn)) {
-			$handler = new \Skeleton\Error\Handler();
-			if ($handler->detected_sentry_sdk()) {
-				$sentry = new \Skeleton\Error\Handler\SentrySdk();
-				$sentry->set_exception($exception);
-				$sentry->handle();
-			} elseif ($handler->detected_sentry_raven()) {
-				$sentry = new \Skeleton\Error\Handler\SentryRaven();
-				$sentry->set_exception($exception);
-				$sentry->handle();
-			}
+		// Report exception
+		if (class_exists('\Skeleton\Error\Handler')) {
+			$handler = \Skeleton\Error\Handler::enable();
+			$handler->report_exception($exception);
 		}
 	}
 

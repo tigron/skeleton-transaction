@@ -45,10 +45,19 @@ class Transaction_Run extends \Skeleton\Console\Command {
 		foreach ($transactions as $transaction) {
 			\Skeleton\Transaction\Runner::run_transaction($transaction);
 			$transaction = \Skeleton\Transaction\Transaction::get_by_id($transaction->id);
-			if ($transaction->failed) {
-				$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<error>error</error>');
-			} else {
-				$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<info>done</info>');
+			try {
+				$transaction_log = $transaction->get_last_transaction_log();
+				if ($transaction_log->failed) {
+					$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<error>error</error>');
+				} else {
+					$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<info>done</info>');
+				}
+			} catch (Exception $e) {
+				if ($transaction->failed) {
+					$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<error>error</error>');
+				} else {
+					$output->writeln($transaction->id . "\t" . $transaction->classname . "\t" . '<info>done</info>');
+				}
 			}
 		}
 

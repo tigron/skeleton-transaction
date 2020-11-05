@@ -48,9 +48,13 @@ class Process {
 	 */
 	public function __construct() {
 		$this->running = false;
-//		pcntl_signal(SIGINT, [$this, 'handle_stop'] );
 	}
 
+	/**
+	 * Handle stop
+	 *
+	 * @access public
+	 */
 	public function handle_stop() {
 		echo 'stop child' . $this->pid . "\n";
 		exit();

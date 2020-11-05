@@ -13,34 +13,7 @@ Installation via composer:
 
 ## Howto setup
 
-Run the initial migration or execute the following queries
-
-    CREATE TABLE `transaction` (
-      `id` int(11) NOT NULL AUTO_INCREMENT,
-      `classname` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
-      `created` datetime NOT NULL,
-      `scheduled_at` datetime NOT NULL,
-      `completed` tinyint(4) NOT NULL,
-      `failed` tinyint(4) NOT NULL,
-      `frozen` tinyint(4) NOT NULL,
-      `recurring` tinyint(4) NOT NULL,
-      `data` text COLLATE utf8_unicode_ci NOT NULL,
-      `locked` tinyint(4) NOT NULL,
-      PRIMARY KEY (`id`),
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-
-    CREATE TABLE `transaction_log` (
-      `id` int(11) NOT NULL AUTO_INCREMENT,
-      `transaction_id` int(11) NOT NULL,
-      `created` datetime NOT NULL,
-      `output` longtext COLLATE utf8_unicode_ci NOT NULL,
-      `failed` tinyint(4) NOT NULL,
-      `exception` longtext COLLATE utf8_unicode_ci NOT NULL,
-      PRIMARY KEY (`id`),
-      KEY `transaction_id` (`transaction_id`),
-      KEY `created` (`created`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+Run the initial migrations
 
 ## Create transactions
 
@@ -53,7 +26,6 @@ implement the run() method:
      *
      * @author Christophe Gosiau <christophe@tigron.be>
      */
-
     class Transaction_Test extends \Skeleton\Transaction\Transaction {
 
         /**
@@ -72,8 +44,7 @@ Schedule your transaction
     $transaction = new Transaction_Email_Order_Canceled();
     $data = [ 'some_data' => 'some_value ];
     $transaction->data = $data;
-    $transaction->save();
-
+    $transaction->schedule();
 
 ## Manage the daemon
 

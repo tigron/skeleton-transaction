@@ -12,6 +12,8 @@
 
 namespace Skeleton\Transaction;
 
+use \Skeleton\Database\Database;
+
 abstract class Transaction {
 	use \Skeleton\Object\Model {
 		__construct as trait_construct;
@@ -62,7 +64,7 @@ abstract class Transaction {
 		if ($key === 'data') {
 			// If the value in 'data' can be json_decoded, do so before returning
 			// it. It will be encoded again in the save() method.
-			if (is_string($this->details['data']) and json_decode($this->details['data']) !== null) {
+			if (is_string($this->details['data']) && json_decode($this->details['data']) !== null) {
 				$this->details['data'] = json_decode($this->details['data'], true);
 			}
 
@@ -81,7 +83,7 @@ abstract class Transaction {
 	public function save() {
 		// If 'data' can not be decoded, it means it has been decoded already
 		// and we should encode it again before saving it.
-		if (isset($this->details['data']) and (is_array($this->details['data']) or json_decode($this->details['data']) === null)) {
+		if (isset($this->details['data']) && (is_array($this->details['data']) || json_decode($this->details['data']) === null)) {
 			$this->details['data'] = json_encode($this->details['data']);
 		}
 
@@ -115,41 +117,21 @@ abstract class Transaction {
 	}
 
 	/**
-	 * Freeze the transaction
-	 *
-	 * @access public
-	 */
-	public function freeze() {
-		$this->frozen = true;
-		$this->save();
-	}
-
-	/**
-	 * Unfreeze the transaction
-	 *
-	 * @access public
-	 */
-	public function unfreeze() {
-		$this->frozen = false;
-		$this->save();
-	}
-
-	/**
 	 * Schedule now
 	 *
 	 * @access public
 	 */
 	public function schedule($time = null) {
-		if (empty($this->scheduled_at) || empty($time)) {
-			$this->scheduled_at = date('Y-m-d H:i:s');
+		if (!isset($this->scheduled_at) || $this->scheduled_at === null || $time === null) {
+			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
 
-		if (strtotime($this->scheduled_at) < strtotime($time, strtotime($this->scheduled_at))) {
-			$this->scheduled_at = date('Y-m-d H:i:s');
+		if ($time !== null && new \DateTime($this->scheduled_at) < (new \DateTime($this->scheduled_at))->modify($time)) {
+			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
 
-		if (!empty($time)) {
-			$this->scheduled_at = date('Y-m-d H:i:s', strtotime($time, strtotime($this->scheduled_at)));
+		if ($time !== null) {
+			$this->scheduled_at = (new \DateTime($this->scheduled_at))->modify($time)->format('Y-m-d H:i:s');
 		}
 
 		$this->save();
@@ -157,6 +139,16 @@ abstract class Transaction {
 		// Keep a non-persistent flag, so we know not to mark this as completed
 		// later on.
 		$this->rescheduled = true;
+	}
+
+	/**
+	 * Unschedule
+	 *
+	 * @access public
+	 */
+	public function unschedule() {
+		$this->scheduled_at = null;
+		$this->save();
 	}
 
 	/**
@@ -168,7 +160,7 @@ abstract class Transaction {
 	public function is_scheduled() {
 		if ($this->completed) {
 			return false;
-		} elseif (strtotime($this->scheduled_at) >= time() AND !$this->locked) {
+		} elseif (new \DateTime($this->scheduled_at) >= new \DateTime() && !$this->locked) {
 			return true;
 		} else {
 			return false;
@@ -182,7 +174,7 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function lock() {
-		$db = \Skeleton\Database\Database::Get();
+		$db = Database::get();
 		$db->get_lock('runnable');
 
 		// refresh the current object's details before verifying the lock status
@@ -217,13 +209,13 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function mark_failed($output, $exception, $date = null) {
-		$transaction_log = new \Skeleton\Transaction\Log();
+		$transaction_log = new Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = true;
 		$transaction_log->exception = print_r($exception, true);
 		if ($date !== null) {
-			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
+			$transaction_log->created = (new \DateTime($date))->format('Y-m-d H:i:s');
 		}
 		$transaction_log->save();
 
@@ -245,17 +237,17 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
-		$transaction_log = new \Skeleton\Transaction\Log();
+		$transaction_log = new Log();
 		$transaction_log->transaction_id = $this->id;
 		$transaction_log->output = $output;
 		$transaction_log->failed = false;
 		if ($date !== null) {
-			$transaction_log->created = date('Y-m-d H:i:s', strtotime($date));
+			$transaction_log->created = (new \DateTime($date))->format('Y-m-d H:i:s');
 		}
 		$transaction_log->save();
 
 		// Don't mark this transaction as completed if it has been rescheduled.
-		if ($this->rescheduled or $this->frozen) {
+		if ($this->rescheduled) {
 			return;
 		}
 
@@ -274,7 +266,7 @@ abstract class Transaction {
 	 * @return array $transaction_logs
 	 */
 	public function get_transaction_logs($limit = null) {
-		return \Skeleton\Transaction\Log::get_by_transaction($this, $limit);
+		return Log::get_by_transaction($this, $limit);
 	}
 
 	/**
@@ -284,11 +276,15 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_by_id($id) {
-		$db = \Skeleton\Database\Database::Get();
-		$classname = $db->get_one('SELECT classname FROM transaction WHERE id=?', [ $id ]);
+		$db = Database::get();
+		$classname = $db->get_one('SELECT classname FROM transaction WHERE id = ?', [ $id ]);
+
+		if ($classname === null) {
+			throw new \Exception('Transaction not found');
+		}
+
 		$classname = 'Transaction_' . $classname;
-		$transaction = new $classname($id);
-		return $transaction;
+		return new $classname($id);
 	}
 
 	/**
@@ -299,17 +295,22 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_by_classname($classname, $limit = null) {
-		$db = \Skeleton\Database\Database::Get();
+		$db = Database::get();
+		$query = 'SELECT id FROM transaction WHERE classname = ? ORDER BY id DESC';
+		$params = [ $classname ];
+
+		if ($limit !== null) {
+			$query .= ' LIMIT ?';
+			$params[] = $limit;
+		}
+
+		$ids = $db->get_column($query, $params);
 
 		$transactions = [];
-		if (is_null($limit)) {
-			$ids = $db->get_column('SELECT id FROM transaction WHERE classname=?', [ $classname ]);
-		} else {
-			$ids = $db->get_column('SELECT id FROM transaction WHERE classname=? ORDER BY id DESC LIMIT ?', [ $classname, $limit ]);
-		}
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
+
 		return $transactions;
 	}
 
@@ -320,25 +321,24 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_runnable() {
-		$db = \Skeleton\Database\Database::Get();
-
-		$transactions = [];
+		$db = Database::get();
 		$ids = $db->get_column('
 			SELECT id FROM
-				(	SELECT id, frozen, failed, locked, created, scheduled_at
+				(	SELECT id, failed, locked, scheduled_at
 					FROM transaction
 					WHERE 1
 					AND scheduled_at < NOW()
 					AND completed = 0
 				) AS transaction
 			WHERE 1
-			AND frozen = 0
+			AND scheduled_at IS NOT NULL
 			AND failed = 0
 			AND locked = 0
 			ORDER BY scheduled_at, id
-			LIMIT ?
+			LIMIT ?;
 		', [ Config::$max_processes ] );
 
+		$transactions = [];
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
@@ -353,19 +353,15 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function count_runnable() {
-		$db = \Skeleton\Database\Database::Get();
-
-		$transactions = [];
-		$count = $db->get_one('
-			SELECT count(*) FROM
-				(SELECT id, frozen, failed, locked, created FROM transaction WHERE scheduled_at < NOW() AND completed=0) AS transaction
+		$db = Database::get();
+		return $db->get_one('
+			SELECT count(1) FROM
+				(SELECT failed, locked, scheduled_at FROM transaction WHERE scheduled_at < NOW() AND completed = 0) AS transaction
 			WHERE 1
-			AND frozen = 0
+			AND scheduled_at IS NOT NULL
 			AND failed = 0
-			AND locked = 0
+			AND locked = 0;
 		');
-
-		return $count;
 	}
 
 	/**
@@ -375,13 +371,14 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_scheduled() {
-		$db = \Skeleton\Database\Database::Get();
+		$db = Database::get();
+		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW();', []);
 
 		$transactions = [];
-		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW()', []);
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
+
 		return $transactions;
 	}
 
@@ -392,13 +389,14 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function get_running() {
-		$db = \Skeleton\Database\Database::Get();
-		$ids = $db->get_column('SELECT id FROM transaction WHERE locked=1 AND completed=0 ORDER BY parallel ASC', []);
+		$db = Database::get();
+		$ids = $db->get_column('SELECT id FROM transaction WHERE locked = 1 AND completed = 0 ORDER BY parallel ASC;', []);
 
 		$transactions = [];
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
+
 		return $transactions;
 	}
 
@@ -408,8 +406,8 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public static function unlock_all() {
-		$db = \Skeleton\Database\Database::Get();
-		$db->query("UPDATE transaction SET locked=0 WHERE locked=1;", []);
+		$db = Database::get();
+		$db->query("UPDATE transaction SET locked = 0 WHERE locked = 1;", []);
 	}
 
 	/**
@@ -419,12 +417,14 @@ abstract class Transaction {
 	 * @return array $transactions
 	 */
 	public static function get_failed_recurring() {
-		$db = \Skeleton\Database\Database::get();
-		$ids = $db->get_column('SELECT id FROM transaction WHERE recurring=1 AND (failed=1 OR completed=1)', []);
+		$db = Database::get();
+		$ids = $db->get_column('SELECT id FROM transaction WHERE recurring = 1 AND (failed = 1 OR completed = 1);', []);
+
 		$transactions = [];
 		foreach ($ids as $id) {
 			$transactions[] = self::get_by_id($id);
 		}
+
 		return $transactions;
 	}
 }

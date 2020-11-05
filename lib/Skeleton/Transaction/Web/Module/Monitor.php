@@ -29,14 +29,17 @@ class Monitor extends \Skeleton\Core\Web\Module {
 		$message = '';
 
 		foreach ($status as $key => $check) {
-			if (is_callable( [$this, 'check_' . $key])) {
-				$error_code = call_user_func_array( [$this, 'check_' . $key], [ $check ]);
-				if ($error_code > $error) {
-					$error = $error_code;
-					$message = 'check_' . $key . ': ' . $check['message'];
-				}
+			if (is_callable( [$this, 'check_' . $key]) === false) {
+				continue;
+			}
+
+			$error_code = call_user_func_array( [$this, 'check_' . $key], [ $check ]);
+			if ($error_code > $error) {
+				$error = $error_code;
+				$message = 'check_' . $key . ': ' . $check['message'];
 			}
 		}
+
 		header('HTTP/1.0 ' . $error . ' ' . $message);
 		echo $message;
 	}
@@ -69,12 +72,12 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	 * @access protected
 	 */
 	protected function check_last_update($check) {
-		$last_update = strtotime($check['result']);
+		$last_update = new \DateTime($check['result']);
 		if ($last_update === false) {
 			return 500;
 		}
 
-		if (time() - $last_update > 60) {
+		if ((new \DateTime())->sub(new \DateInterval('PT1M')) > $last_update) {
 			return 500;
 		}
 	}
@@ -96,12 +99,12 @@ class Monitor extends \Skeleton\Core\Web\Module {
 	 * @access protected
 	 */
 	protected function check_last_successful($check) {
-		$last_successful = strtotime($check['result']);
+		$last_successful = new \DateTime($check['result']);
 		if ($last_successful === false) {
 			return 400;
 		}
 
-		if (time() - $last_successful > 60*60*24) {
+		if ((new \DateTime())->sub(new \DateInterval('P1D')) > $last_successful) {
 			return 400;
 		}
 	}

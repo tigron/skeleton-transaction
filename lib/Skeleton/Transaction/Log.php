@@ -17,6 +17,12 @@ class Log {
 	use \Skeleton\Object\Save;
 	use \Skeleton\Object\Delete;
 
+	/**
+	 * Class configuration
+	 *
+	 * @access private
+	 * @var array $class_configuration
+	 */
 	private static $class_configuration = [
 		'database_table' => 'transaction_log'
 	];
@@ -29,11 +35,11 @@ class Log {
 	 * @return array $transaction_logs
 	 */
 	public static function get_by_transaction(Transaction $transaction, $limit = null) {
-		$db = Database::Get();
+		$db = Database::get();
 		if (is_null($limit)) {
-			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id=?', [ $transaction->id ]);
+			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id = ?', [ $transaction->id ]);
 		} else {
-			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT ' . $limit, [ $transaction->id ]);
+			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id = ? ORDER BY created DESC LIMIT ' . $limit, [ $transaction->id ]);
 			$ids = array_reverse($ids);
 		}
 
@@ -53,13 +59,14 @@ class Log {
 	 * @return array $transaction_logs
 	 */
 	public static function get_last_by_transaction(Transaction $transaction) {
-		$db = Database::Get();
-		$id = $db->get_one('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1', [ $transaction->id ]);
+		$db = Database::get();
+		$id = $db->get_one('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1;', [ $transaction->id ]);
+
 		if ($id === null) {
 			throw new \Exception('No transaction_log yet');
 		}
 
-		return self::get_by_id($id);;
+		return self::get_by_id($id);
 	}
 
 	/**
@@ -68,12 +75,13 @@ class Log {
 	 * @access public
 	 */
 	public static function get_last_successful() {
-		$db = Database::Get();
-		$id = $db->get_one('SELECT id FROM transaction_log WHERE failed=0 ORDER BY created DESC LIMIT 1', [ ]);
+		$db = Database::get();
+		$id = $db->get_one('SELECT id FROM transaction_log WHERE failed=0 ORDER BY created DESC LIMIT 1;', []);
+
 		if ($id === null) {
 			throw new \Exception('No transaction_log yet');
 		}
 
-		return self::get_by_id($id);;
+		return self::get_by_id($id);
 	}
 }

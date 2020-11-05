@@ -11,6 +11,10 @@ use \Skeleton\Database\Database;
 
 class Monitor {
 
+	/**
+	 * @access private
+	 * @var array
+	 */
 	private $result;
 
 	/**
@@ -51,6 +55,7 @@ class Monitor {
 				'message' => $e->getMessage(),
 			];
 		}
+
 		$this->result['database'] = $result;
 	}
 
@@ -61,15 +66,16 @@ class Monitor {
 	 */
 	private function handle_recurring() {
 		$transactions = Transaction::get_failed_recurring();
+
 		$classnames = [];
 		foreach ($transactions as $transaction) {
 			$classnames[] = $transaction->classname;
 		}
-		$result = [
+
+		$this->result['recurring'] = [
 			'result' => count($transactions),
 			'message' => implode(', ', $classnames),
 		];
-		$this->result['recurring'] = $result;
 	}
 
 	/**
@@ -79,7 +85,7 @@ class Monitor {
 	 */
 	private function handle_last_update() {
 		$this->result['last_update'] = [
-			'result' => date('Y-m-d H:i:s'),
+			'result' => (new \DateTime())->format('Y-m-d H:i:s'),
 			'message' => '',
 		];
 	}
@@ -90,12 +96,10 @@ class Monitor {
 	 * @access private
 	 */
 	private function handle_runnable() {
-		$count = Transaction::count_runnable();
-		$result = [
-			'result' => $count,
+		$this->result['runnable'] = [
+			'result' => Transaction::count_runnable(),
 			'message' => '',
 		];
-		$this->result['runnable'] = $result;
 	}
 
 	/**

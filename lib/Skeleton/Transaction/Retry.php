@@ -23,11 +23,12 @@ trait Retry {
 	 * Retry transaction after a specified time (default: 15 minutes)
 	 *
 	 * @access public
-	 * @param  string $output
-	 * @param  \Exception $e
+	 * @param \Exception $e
+	 * @param string $output
+	 * @param string $next_retry
 	 */
 	public function retry(\Exception $e = null, $output = null, $next_retry = '+15 minutes') {
-		if (self::$max_attempts > 0 AND $this->retry_attempt >= self::$max_attempts) {
+		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			echo $output;
 			throw $e;
 		}
@@ -40,12 +41,13 @@ trait Retry {
 	 * Retry transaction using an incremental time algorithm
 	 *
 	 * @access public
-	 * @param  int $exp
-	 * @param  string $output
-	 * @param  \Exception $e
+	 * @param \Exception $e
+	 * @param string $output
+	 * @param int $exp
+	 * @param string $unites
 	 */
 	public function retry_incremental(\Exception $e = null, $output = null, $exp = 2, $unit = 'minutes') {
-		if (self::$max_attempts > 0 AND $this->retry_attempt >= self::$max_attempts) {
+		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			echo $output;
 			throw $e;
 		}

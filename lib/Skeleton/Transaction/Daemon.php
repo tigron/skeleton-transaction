@@ -161,7 +161,7 @@ class Daemon {
 	 *
 	 * @access private
 	 */
-	private function handle_stop() {
+	public function handle_stop() {
 		$this->flag_stop = true;
 	}
 
@@ -313,9 +313,10 @@ class Daemon {
 		} else {
 			// Child
 			$title = realpath(getcwd() . '/' . $_SERVER['SCRIPT_FILENAME']) . ' transaction:daemon';
-			\cli_set_process_title($title);			
+			\cli_set_process_title($title);
 			$daemon = new self();
 			$daemon->run();
+			exit;
 		}
 	}
 

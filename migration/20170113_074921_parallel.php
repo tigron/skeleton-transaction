@@ -17,12 +17,19 @@ class Migration_20170113_074921_Parallel extends \Skeleton\Database\Migration {
 	 */
 	public function up() {
 		$db = Database::get();
-		$columns = $db->get_column("SHOW COLUMNS FROM transaction");
-	  if (in_array('parallel', $columns) == false) {
-	    $db->query("ALTER TABLE `transaction`
-	          ADD `parallel` tinyint(4) NOT NULL,
-	          ADD `retry_interval` int NOT NULL AFTER `parallel`;");
-	  }
+		$data = $db->get_all("SHOW COLUMNS FROM transaction");
+		$columns = [];
+		foreach ($data as $row) {
+			$columns[] = $row['Field'];
+		}
+
+		if (in_array('parallel', $columns) == false) {
+			$db->query("
+				ALTER TABLE `transaction`
+				ADD `parallel` tinyint(4) NOT NULL,
+				ADD `retry_interval` int NOT NULL AFTER `parallel`;
+			");
+		}
 	}
 
 	/**

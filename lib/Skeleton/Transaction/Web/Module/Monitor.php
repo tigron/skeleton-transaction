@@ -7,9 +7,10 @@
 
 namespace Skeleton\Transaction\Web\Module;
 
+use \Skeleton\Core\Application\Web\Module;
 use \Skeleton\Transaction\Daemon;
 
-class Monitor extends \Skeleton\Core\Web\Module {
+class Monitor extends Module {
 
 	/**
 	 * Display the status

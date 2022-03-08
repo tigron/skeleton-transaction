@@ -209,15 +209,7 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function mark_failed($output, $exception, $date = null) {
-		$transaction_log = new Log();
-		$transaction_log->transaction_id = $this->id;
-		$transaction_log->output = $output;
-		$transaction_log->failed = true;
-		$transaction_log->exception = print_r($exception, true);
-		if ($date !== null) {
-			$transaction_log->created = (new \DateTime($date))->format('Y-m-d H:i:s');
-		}
-		$transaction_log->save();
+		Log::create($this, true, $output, $exception, $date);
 
 		$this->failed = true;
 		$this->completed = true;
@@ -237,19 +229,12 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
-		$transaction_log = new Log();
-		$transaction_log->transaction_id = $this->id;
-		$transaction_log->output = $output;
-		$transaction_log->failed = false;
-		if ($date !== null) {
-			$transaction_log->created = (new \DateTime($date))->format('Y-m-d H:i:s');
-		}
-		$transaction_log->save();
-
 		// Don't mark this transaction as completed if it has been rescheduled.
 		if ($this->rescheduled) {
 			return;
 		}
+
+		Log::create($this, true, $output, null, $date);
 
 		$this->failed = false;
 		if (!$this->recurring) {

@@ -84,4 +84,30 @@ class Log {
 
 		return self::get_by_id($id);
 	}
+
+	/**
+	 * Create log.
+	 */
+	public static function create(
+		\Transaction $transaction, bool $failed, string $output = '', ?\Exception $exception = null,
+		?string $date = null
+		): self {
+
+		$log = new self();
+		$log->transaction_id = $transaction->id;
+		$log->failed = $failed;
+		$log->output = $output;
+
+		if (isset($exception) === true) {
+			$log->exception = print_r($exception, true);
+		}
+
+		if ($date !== null) {
+			$log->created = (new \DateTime($date))->format('Y-m-d H:i:s');
+		}
+
+		$log->save();
+
+		return $log;
+	}
 }

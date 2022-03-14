@@ -234,7 +234,7 @@ abstract class Transaction {
 			return;
 		}
 
-		Log::create($this, true, $output, null, $date);
+		Log::create($this, false, $output, null, $date);
 
 		$this->failed = false;
 		if (!$this->recurring) {

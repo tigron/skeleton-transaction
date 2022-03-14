@@ -229,12 +229,12 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
+		Log::create($this, false, $output, null, $date);
+		
 		// Don't mark this transaction as completed if it has been rescheduled.
 		if ($this->rescheduled) {
 			return;
 		}
-
-		Log::create($this, false, $output, null, $date);
 
 		$this->failed = false;
 		if (!$this->recurring) {

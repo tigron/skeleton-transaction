@@ -89,7 +89,7 @@ class Log {
 	 * Create log.
 	 */
 	public static function create(
-		\Transaction $transaction, bool $failed, string $output = '', ?\Exception $exception = null,
+		\Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null,
 		?string $date = null
 		): self {
 
@@ -98,8 +98,8 @@ class Log {
 		$log->failed = $failed;
 		$log->output = $output;
 
-		if (isset($exception) === true) {
-			$log->exception = print_r($exception, true);
+		if (isset($t) === true) {
+			$log->exception = print_r($t, true);
 		}
 
 		if ($date !== null) {

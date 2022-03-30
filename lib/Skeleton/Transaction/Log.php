@@ -89,18 +89,13 @@ class Log {
 	 * Create log.
 	 */
 	public static function create(
-		\Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null,
-		?string $date = null
+		\Transaction $transaction, bool $failed, string $output = '', ?string $date = null
 		): self {
 
 		$log = new self();
 		$log->transaction_id = $transaction->id;
 		$log->failed = $failed;
 		$log->output = $output;
-
-		if (isset($t) === true) {
-			$log->exception = print_r($t, true);
-		}
 
 		if ($date !== null) {
 			$log->created = (new \DateTime($date))->format('Y-m-d H:i:s');

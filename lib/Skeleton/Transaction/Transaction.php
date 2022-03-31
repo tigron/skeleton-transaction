@@ -209,7 +209,7 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function mark_failed($output, $exception, $date = null) {
-		Log::create($this, true, print_r($exception, true), $date);
+		Log::create($this, true, $output, $exception, $date);
 
 		$this->failed = true;
 		$this->completed = true;

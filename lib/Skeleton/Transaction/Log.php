@@ -98,7 +98,7 @@ class Log {
 		$log->output = $output;
 
 		if (isset($t) === true) {
-			$log->exception = print_r($t, true);
+			$log->exception = substr(print_r($t, true), 0, 16777215);
 		}
 
 		if ($date !== null) {

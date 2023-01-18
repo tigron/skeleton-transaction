@@ -95,7 +95,7 @@ class Log {
 		$log = new self();
 		$log->transaction_id = $transaction->id;
 		$log->failed = $failed;
-		$log->output = $output;
+		$log->output = substr($output, 0, 16777215);
 
 		if (isset($t) === true) {
 			$log->exception = substr(print_r($t, true), 0, 16777215);

@@ -209,7 +209,6 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function mark_failed($output, $exception, $date = null) {
-		Database::reset();
 		Log::create($this, true, $output, $exception, $date);
 
 		$this->failed = true;
@@ -230,7 +229,6 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function mark_completed($output, $date = null) {
-		Database::reset();
 		Log::create($this, false, $output, $date);
 
 		// Don't mark this transaction as completed if it has been rescheduled.

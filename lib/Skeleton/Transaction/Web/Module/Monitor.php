@@ -7,8 +7,8 @@
 
 namespace Skeleton\Transaction\Web\Module;
 
-use \Skeleton\Core\Application\Web\Module;
-use \Skeleton\Transaction\Daemon;
+use Skeleton\Application\Web\Module;
+use Skeleton\Transaction\Daemon;
 
 class Monitor extends Module {
 

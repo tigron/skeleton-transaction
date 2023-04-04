@@ -26,7 +26,7 @@ trait Retry {
 	 * @param string $output
 	 * @param string $next_retry
 	 */
-	public function retry($output = null, $next_retry = '+15 minutes') {
+	public function retry(string $output = '', $next_retry = '+15 minutes') {
 		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			throw new \Exception($output);
 		}
@@ -45,7 +45,7 @@ trait Retry {
 	 * @param int $exp
 	 * @param string $unit
 	 */
-	public function retry_incremental($output = null, $exp = 2, $unit = 'minutes') {
+	public function retry_incremental(string $output = '', $exp = 2, $unit = 'minutes') {
 		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			throw new \Exception($output);
 		}

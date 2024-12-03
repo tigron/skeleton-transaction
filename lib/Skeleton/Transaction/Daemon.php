@@ -38,7 +38,7 @@ class Daemon {
 	 * @access private
 	 * @var $lock_timestamp
 	 */
-	private $lock_timestamp = null;
+	private ?string $lock_timestamp = null;
 
 	/**
 	 * Constructor
@@ -72,6 +72,11 @@ class Daemon {
 		Transaction::unlock_all();
 	}
 
+	/**
+	 * teardown
+	 *
+	 * @access private
+	 */
 	private function teardown(): void {
 		/**
 		 * Waiting for all processes to be terminated

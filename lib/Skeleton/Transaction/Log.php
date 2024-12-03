@@ -88,9 +88,7 @@ class Log {
 	/**
 	 * Create log.
 	 */
-	public static function create(
-		\Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null, ?string $date = null
-		): self {
+	public static function create(Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null, ?string $date = null): self {
 		$log = new self();
 		$log->transaction_id = $transaction->id;
 		$log->failed = $failed;

@@ -122,7 +122,7 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public function schedule($time = null): void {
+	public function schedule(?string $time = null): void {
 		if (!isset($this->scheduled_at) || $this->scheduled_at === null || $time === null) {
 			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
@@ -209,7 +209,7 @@ abstract class Transaction {
 	 * @param string exception that is thrown
 	 * @access public
 	 */
-	public function mark_failed($output, $exception, $date = null): void {
+	public function mark_failed(string $output, \Throwable $exception, ?string $date = null): void {
 		Log::create($this, true, $output, $exception, $date);
 
 		$this->failed = true;
@@ -228,7 +228,7 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public function mark_completed($output, ?string $date = null): void {
+	public function mark_completed(string $output, ?string $date = null): void {
 		Log::create($this, false, $output, null, $date);
 
 		// Don't mark this transaction as completed if it has been rescheduled.
@@ -250,7 +250,7 @@ abstract class Transaction {
 	 * @access public
 	 * @return array $transaction_logs
 	 */
-	public function get_transaction_logs($limit = null): array {
+	public function get_transaction_logs(?int $limit = null): array {
 		return Log::get_by_transaction($this, $limit);
 	}
 
@@ -260,7 +260,7 @@ abstract class Transaction {
 	 * @param Transaction id
 	 * @access public
 	 */
-	public static function get_by_id($id) {
+	public static function get_by_id(int $id) {
 		$db = Database::get();
 		$classname = $db->get_one('SELECT classname FROM transaction WHERE id = ?', [ $id ]);
 
@@ -275,11 +275,9 @@ abstract class Transaction {
 	/**
 	 * Get transactions by classname
 	 *
-	 * @param $classname
-	 * @param $limit
 	 * @access public
 	 */
-	public static function get_by_classname($classname, $limit = null): array {
+	public static function get_by_classname(string $classname, ?int $limit = null): array {
 		$db = Database::get();
 		$query = 'SELECT id FROM transaction WHERE classname = ? ORDER BY id DESC';
 		$params = [ $classname ];

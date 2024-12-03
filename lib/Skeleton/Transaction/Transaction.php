@@ -62,6 +62,12 @@ abstract class Transaction {
 
 			return $this->details['data'];
 		}
+
+		// temporary workaround until we somehow fix this in skeleton-database
+		if (in_array($key, ['completed', 'failed', 'recurring', 'parallel', 'locked'])) {
+			return (bool)$this->trait_get($key);
+		}
+
 		return $this->trait_get($key);
 	}
 

@@ -91,9 +91,8 @@ abstract class Transaction {
 	 * Get last transaction_log
 	 *
 	 * @access public
-	 * @return Transaction_Log $transaction_log
 	 */
-	public function get_last_transaction_log(): Transaction_Log {
+	public function get_last_transaction_log(): Log {
 		try {
 			return Log::get_last_by_transaction($this);
 		} catch (\Exception $e) {
@@ -274,7 +273,7 @@ abstract class Transaction {
 	 * @param $limit
 	 * @access public
 	 */
-	public static function get_by_classname($classname, $limit = null) {
+	public static function get_by_classname($classname, $limit = null): array {
 		$db = Database::get();
 		$query = 'SELECT id FROM transaction WHERE classname = ? ORDER BY id DESC';
 		$params = [ $classname ];
@@ -330,9 +329,10 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public static function count_runnable(): array {
+	public static function count_runnable(): int {
 		$db = Database::get();
-		return $db->get_one('
+
+		return (int)$db->get_one('
 			SELECT count(1) FROM
 				(SELECT failed, locked, scheduled_at FROM transaction WHERE scheduled_at < NOW() AND completed = 0) AS transaction
 			WHERE 1

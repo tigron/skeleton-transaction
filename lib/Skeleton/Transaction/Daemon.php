@@ -38,7 +38,7 @@ class Daemon {
 	 * @access private
 	 * @var $lock_timestamp
 	 */
-	private ?string $lock_timestamp = null;
+	private string|int|null $lock_timestamp = null;
 
 	/**
 	 * Constructor

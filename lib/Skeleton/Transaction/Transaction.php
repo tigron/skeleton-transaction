@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Transaction class
  *
@@ -12,7 +15,7 @@
 
 namespace Skeleton\Transaction;
 
-use \Skeleton\Database\Database;
+use Skeleton\Database\Database;
 
 abstract class Transaction {
 	use \Skeleton\Object\Model {
@@ -27,25 +30,15 @@ abstract class Transaction {
 
 	/**
 	 * Non-persistent rescheduled flag
-	 *
-	 * @var boolean
 	 */
-	private $rescheduled = false;
-
-	/**
-	 * Run transaction
-	 *
-	 * @abstract
-	 */
-	abstract function run();
+	private bool $rescheduled = false;
 
 	/**
 	 * Transaction
 	 *
 	 * @access public
-	 * @param int $id
 	 */
-	public function __construct($id = null) {
+	public function __construct(?int $id = null) {
 		$classname = get_called_class();
 		$this->classname = substr($classname, strpos($classname, '_') + 1);
 		$this->parallel = $this->parallel();
@@ -57,10 +50,9 @@ abstract class Transaction {
 	 * __get()
 	 *
 	 * @access public
-	 * @param string $key
 	 * @param return mixed
 	 */
-	public function __get($key) {
+	public function __get(string $key) {
 		if ($key === 'data') {
 			// If the value in 'data' can be json_decoded, do so before returning
 			// it. It will be encoded again in the save() method.
@@ -69,18 +61,23 @@ abstract class Transaction {
 			}
 
 			return $this->details['data'];
-		} else {
-			$return = $this->trait_get($key);
-			return $return;
 		}
+		return $this->trait_get($key);
 	}
+
+	/**
+	 * Run transaction
+	 *
+	 * @abstract
+	 */
+	abstract public function run(): void;
 
 	/**
 	 * save(): ensures 'data' is json_encoded before saving.
 	 *
 	 * @access public
 	 */
-	public function save() {
+	public function save(): void {
 		// If 'data' can not be decoded, it means it has been decoded already
 		// and we should encode it again before saving it.
 		if (isset($this->details['data']) && (is_array($this->details['data']) || json_decode($this->details['data']) === null)) {
@@ -96,7 +93,7 @@ abstract class Transaction {
 	 * @access public
 	 * @return Transaction_Log $transaction_log
 	 */
-	public function get_last_transaction_log() {
+	public function get_last_transaction_log(): Transaction_Log {
 		try {
 			return Log::get_last_by_transaction($this);
 		} catch (\Exception $e) {
@@ -110,9 +107,8 @@ abstract class Transaction {
 	 * if the transaction should not be run in parallel.
 	 *
 	 * @access public
-	 * @return bool
 	 */
-	public function parallel() {
+	public function parallel(): bool {
 		return true;
 	}
 
@@ -121,7 +117,7 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public function schedule($time = null) {
+	public function schedule($time = null): void {
 		if (!isset($this->scheduled_at) || $this->scheduled_at === null || $time === null) {
 			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
@@ -146,7 +142,7 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public function unschedule() {
+	public function unschedule(): void {
 		$this->scheduled_at = null;
 		$this->save();
 	}
@@ -157,14 +153,14 @@ abstract class Transaction {
 	 * @access public
 	 * @return bool $scheduled
 	 */
-	public function is_scheduled() {
+	public function is_scheduled(): bool {
 		if ($this->completed) {
 			return false;
-		} elseif (new \DateTime($this->scheduled_at) >= new \DateTime() && !$this->locked) {
-			return true;
-		} else {
-			return false;
 		}
+		if (new \DateTime($this->scheduled_at) >= new \DateTime() && !$this->locked) {
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -173,7 +169,7 @@ abstract class Transaction {
 	 * @access public
 	 * @param string $date
 	 */
-	public function lock() {
+	public function lock(): void {
 		$db = Database::get();
 		$db->get_lock('runnable');
 
@@ -197,7 +193,7 @@ abstract class Transaction {
 	 * @access public
 	 * @param string $date
 	 */
-	public function unlock() {
+	public function unlock(): void {
 		$this->locked = false;
 		$this->save();
 	}
@@ -208,7 +204,7 @@ abstract class Transaction {
 	 * @param string exception that is thrown
 	 * @access public
 	 */
-	public function mark_failed($output, $exception, $date = null) {
+	public function mark_failed($output, $exception, $date = null): void {
 		Log::create($this, true, $output, $exception, $date);
 
 		$this->failed = true;
@@ -226,9 +222,8 @@ abstract class Transaction {
 	 * Mark completed
 	 *
 	 * @access public
-	 * @param string $date
 	 */
-	public function mark_completed($output, $date = null) {
+	public function mark_completed($output, ?string $date = null): void {
 		Log::create($this, false, $output, null, $date);
 
 		// Don't mark this transaction as completed if it has been rescheduled.
@@ -250,7 +245,7 @@ abstract class Transaction {
 	 * @access public
 	 * @return array $transaction_logs
 	 */
-	public function get_transaction_logs($limit = null) {
+	public function get_transaction_logs($limit = null): array {
 		return Log::get_by_transaction($this, $limit);
 	}
 
@@ -302,10 +297,9 @@ abstract class Transaction {
 	/**
 	 * Get runnable transactions
 	 *
-	 * @return array
 	 * @access public
 	 */
-	public static function get_runnable() {
+	public static function get_runnable(): array {
 		$db = Database::get();
 		$ids = $db->get_column('
 			SELECT id FROM
@@ -321,7 +315,7 @@ abstract class Transaction {
 			AND locked = 0
 			ORDER BY scheduled_at, id
 			LIMIT ?;
-		', [ Config::$max_processes ] );
+		', [ Config::$max_processes ]);
 
 		$transactions = [];
 		foreach ($ids as $id) {
@@ -334,10 +328,9 @@ abstract class Transaction {
 	/**
 	 * Get runnable transactions
 	 *
-	 * @return array
 	 * @access public
 	 */
-	public static function count_runnable() {
+	public static function count_runnable(): array {
 		$db = Database::get();
 		return $db->get_one('
 			SELECT count(1) FROM
@@ -352,10 +345,9 @@ abstract class Transaction {
 	/**
 	 * Get scheduled transactions
 	 *
-	 * @return array
 	 * @access public
 	 */
-	public static function get_scheduled() {
+	public static function get_scheduled(): array {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW();', []);
 
@@ -370,10 +362,9 @@ abstract class Transaction {
 	/**
 	 * Get running
 	 *
-	 * @return array
 	 * @access public
 	 */
-	public static function get_running() {
+	public static function get_running(): array {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE locked = 1 AND completed = 0 ORDER BY parallel ASC;', []);
 
@@ -390,9 +381,9 @@ abstract class Transaction {
 	 *
 	 * @access public
 	 */
-	public static function unlock_all() {
+	public static function unlock_all(): void {
 		$db = Database::get();
-		$db->query("UPDATE transaction SET locked = 0 WHERE locked = 1;", []);
+		$db->query('UPDATE transaction SET locked = 0 WHERE locked = 1;', []);
 	}
 
 	/**
@@ -401,7 +392,7 @@ abstract class Transaction {
 	 * @access public
 	 * @return array $transactions
 	 */
-	public static function get_failed_recurring() {
+	public static function get_failed_recurring(): array {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE recurring = 1 AND (failed = 1 OR completed = 1);', []);
 

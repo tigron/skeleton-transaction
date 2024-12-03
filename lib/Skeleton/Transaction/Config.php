@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Config class
  * Configuration for Skeleton\Transaction
@@ -10,30 +13,26 @@
 namespace Skeleton\Transaction;
 
 class Config {
-
 	/**
 	 * pid file
 	 *
 	 * @access public
-	 * @var string $pid_file
 	 */
-	public static $pid_file = '/tmp/skeleton-transaction.pid';
+	public static string $pid_file = '/tmp/skeleton-transaction.pid';
 
 	/**
 	 * max processes
 	 *
 	 * @access public
-	 * @var int $max_processes
 	 */
-	public static $max_processes = 10;
+	public static int $max_processes = 10;
 
 	/**
 	 * Log file
 	 *
 	 * @access public
-	 * @var string $log_file
 	 */
-	public static $monitor_file = '/tmp/skeleton-transaction.status';
+	public static string $monitor_file = '/tmp/skeleton-transaction.status';
 
 	/**
 	 * Monitor authentication header
@@ -41,7 +40,6 @@ class Config {
 	 * x-authentication
 	 *
 	 * @access public
-	 * @var string $monitor_authentication
 	 */
-	public static $monitor_authentication = null;
+	public static ?string $monitor_authentication = null;
 }

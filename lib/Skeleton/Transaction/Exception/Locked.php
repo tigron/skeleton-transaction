@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Exception Locked class
  */
@@ -6,7 +9,6 @@
 namespace Skeleton\Transaction\Exception;
 
 class Locked extends \Exception {
-
 	/**
 	 * Constructor
 	 *
@@ -16,6 +18,4 @@ class Locked extends \Exception {
 	public function __construct() {
 		$this->message = 'Transaction already locked';
 	}
-
 }
-

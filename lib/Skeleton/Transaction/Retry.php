@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Config class
  * Configuration for Skeleton\Transaction
@@ -11,22 +14,17 @@
 namespace Skeleton\Transaction;
 
 trait Retry {
-
 	/**
 	 * Max attempts
-	 *
-	 * @var integer
 	 */
-	static $max_attempts = -1;
+	public static int $max_attempts = -1;
 
 	/**
 	 * Retry transaction after a specified time (default: 15 minutes)
 	 *
 	 * @access public
-	 * @param string $output
-	 * @param string $next_retry
 	 */
-	public function retry(string $output = '', $next_retry = '+15 minutes') {
+	public function retry(string $output = '', string $next_retry = '+15 minutes'): void {
 		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			throw new \Exception($output);
 		}
@@ -41,11 +39,8 @@ trait Retry {
 	 * Retry transaction using an incremental time algorithm
 	 *
 	 * @access public
-	 * @param string $output
-	 * @param int $exp
-	 * @param string $unit
 	 */
-	public function retry_incremental(string $output = '', $exp = 2, $unit = 'minutes') {
+	public function retry_incremental(string $output = '', int $exp = 2, string $unit = 'minutes'): void {
 		if (self::$max_attempts > 0 && $this->retry_attempt >= self::$max_attempts) {
 			throw new \Exception($output);
 		}

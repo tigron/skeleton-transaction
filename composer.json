@@ -7,9 +7,10 @@
 		"tigron/skeleton-object": "dev-master"
     },
     "require": {
-		"tigron/skeleton-object": ">=0.1.18",
-		"tigron/skeleton-database": ">=0.2.2",
-		"tigron/skeleton-core": ">=4"
+		"php": ">=8.2",
+		"tigron/skeleton-object": ">=1.1",
+		"tigron/skeleton-database": ">=0.3",
+		"tigron/skeleton-core": ">=5"
     },
     "license": "MIT",
     "authors": [

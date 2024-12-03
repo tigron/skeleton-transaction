@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Transaction_Log class
  *
@@ -9,7 +12,7 @@
 
 namespace Skeleton\Transaction;
 
-use \Skeleton\Database\Database;
+use Skeleton\Database\Database;
 
 class Log {
 	use \Skeleton\Object\Model;
@@ -21,20 +24,18 @@ class Log {
 	 * Class configuration
 	 *
 	 * @access private
-	 * @var array $class_configuration
 	 */
-	private static $class_configuration = [
-		'database_table' => 'transaction_log'
+	private static array $class_configuration = [
+		'database_table' => 'transaction_log',
 	];
 
 	/**
 	 * Get by transaction
 	 *
 	 * @access public
-	 * @param Transaction $transaction
 	 * @return array $transaction_logs
 	 */
-	public static function get_by_transaction(Transaction $transaction, $limit = null) {
+	public static function get_by_transaction(Transaction $transaction, ?int $limit = null): array {
 		$db = Database::get();
 		if (is_null($limit)) {
 			$ids = $db->get_column('SELECT id FROM transaction_log WHERE transaction_id = ?', [ $transaction->id ]);
@@ -55,10 +56,9 @@ class Log {
 	 * Get last by transaction
 	 *
 	 * @access public
-	 * @param Transaction $transaction
 	 * @return array $transaction_logs
 	 */
-	public static function get_last_by_transaction(Transaction $transaction) {
+	public static function get_last_by_transaction(Transaction $transaction): array {
 		$db = Database::get();
 		$id = $db->get_one('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1;', [ $transaction->id ]);
 
@@ -91,7 +91,6 @@ class Log {
 	public static function create(
 		\Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null, ?string $date = null
 		): self {
-
 		$log = new self();
 		$log->transaction_id = $transaction->id;
 		$log->failed = $failed;

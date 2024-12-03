@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * migration:create command for Skeleton Console
  *
@@ -9,23 +12,21 @@
 
 namespace Skeleton\Console\Command;
 
+use Skeleton\Transaction\Daemon;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-use \Skeleton\Transaction\Daemon;
 
 class Transaction_Daemon extends \Skeleton\Console\Command {
-
 	/**
 	 * Configure the Create command
 	 *
 	 * @access protected
 	 */
-	protected function configure() {
+	protected function configure(): void {
 		$this->setName('transaction:daemon');
 		$this->setDescription('Manage Transaction_Daemon');
 		$this->addArgument('action', InputArgument::REQUIRED, 'start/stop/install');
@@ -35,8 +36,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Execute the Command
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$action = $input->getArgument('action');
@@ -51,8 +50,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Start
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function start(InputInterface $input, OutputInterface $output) {
 		try {
@@ -72,12 +69,10 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Stop
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function stop(InputInterface $input, OutputInterface $output) {
 		try {
-			$pid = Daemon::stop();
+			Daemon::stop();
 		} catch (\Exception $e) {
 			$output->writeln('<error>' . $e->getMessage() . ': daemon not stopped</error>');
 			return 1;
@@ -90,8 +85,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Restart
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function restart(InputInterface $input, OutputInterface $output) {
 		$this->stop($input, $output);
@@ -105,8 +98,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Runs the transaction daemon in foreground mode
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function foreground(InputInterface $input, OutputInterface $output) {
 		try {
@@ -122,8 +113,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Status
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function status(InputInterface $input, OutputInterface $output) {
 		$status = Daemon::status();
@@ -146,13 +135,11 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 * Install
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function install(InputInterface $input, OutputInterface $output) {
 		$dialog = $this->getHelper('question');
 
-		if (posix_getuid() !== 0){
+		if (posix_getuid() !== 0) {
 			$output->writeln('<error>The installation requires root privileges</error>');
 			return 0;
 		}
@@ -175,7 +162,6 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 
 		$question = new Question('Enter the username to run the daemon as []:', false);
 		$systemd_username = $dialog->ask($input, $output, $question);
-
 
 		if (!$systemd_username) {
 			$output->writeln('<error>Please provide a username</error>');

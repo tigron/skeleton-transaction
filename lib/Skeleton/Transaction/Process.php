@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Transaction Process
  *
@@ -8,38 +11,33 @@
 namespace Skeleton\Transaction;
 
 class Process {
-
 	/**
 	 * Running
 	 *
 	 * @access private
-	 * @var bool $running
 	 */
-	private $running;
+	private bool $running;
 
 	/**
 	 * Transaction
 	 *
 	 * @access private
-	 * @var \Skeleton\Transaction\Transaction $transaction
 	 */
-	private $transaction = null;
+	private ?\Skeleton\Transaction\Transaction $transaction = null;
 
 	/**
 	 * PID
 	 *
 	 * @access private
-	 * @var int $pid
 	 */
-	private $pid = null;
+	private ?int $pid = null;
 
 	/**
 	 * Parallel
 	 *
 	 * @access private
-	 * @var bool $parallel
 	 */
-	private $parallel = false;
+	private ?bool $parallel = false;
 
 	/**
 	 * Constructor
@@ -55,9 +53,9 @@ class Process {
 	 *
 	 * @access public
 	 */
-	public function handle_stop() {
+	public function handle_stop(): void {
 		echo 'stop child' . $this->pid . "\n";
-		exit();
+		exit;
 	}
 
 	/**
@@ -66,7 +64,7 @@ class Process {
 	 * @access public
 	 * @param \Skeleton\Transaction $transaction
 	 */
-	public function load_transaction(\Skeleton\Transaction\Transaction $transaction) {
+	public function load_transaction(\Skeleton\Transaction\Transaction $transaction): void {
 		$this->transaction = $transaction;
 		$this->transaction->lock();
 		$this->parallel = $this->transaction->parallel;
@@ -78,7 +76,7 @@ class Process {
 	 * @access public
 	 * @return bool $is_running
 	 */
-	public function is_running() {
+	public function is_running(): bool {
 		if ($this->pid === null) {
 			return $this->running;
 		}
@@ -93,24 +91,12 @@ class Process {
 	}
 
 	/**
-	 * Reset the process
-	 *
-	 * @access private
-	 */
-	private function reset() {
-		$this->running = false;
-		$this->transaction = null;
-		$this->pid = null;
-		$this->parallel = false;
-	}
-
-	/**
 	 * Is parallel
 	 *
 	 * @access public
 	 * @return bool $is_parallel
 	 */
-	public function is_parallel() {
+	public function is_parallel(): bool {
 		$this->is_running();
 		return $this->parallel;
 	}
@@ -120,40 +106,54 @@ class Process {
 	 *
 	 * @access public
 	 */
-	public function run() {
+	public function run(): void {
 		\Skeleton\Database\Database::reset();
 		$pid = pcntl_fork();
 
-		if ($pid == -1) {
+		if ($pid === -1) {
 			$this->transaction->running = false;
 			$this->transaction->save();
 			throw new \Exception('Process cannot be spawned');
-		} else if ($pid) {
+		}
+
+		if ($pid) {
 			/**
 			 * Parent
 			 */
 			$this->pid = $pid;
 			$this->running = true;
 			return;
-		} else {
-			/**
-			 * Child
-			 */
-			posix_setsid();
-
-			$parallel = 'serial';
-			if ($this->transaction->parallel) {
-				$parallel = 'parallel';
-			}
-			cli_set_process_title(strtolower($this->transaction->classname) . ' (' . $this->transaction->id . ') - ' . $parallel);
-			$runner = new Runner();
-
-			$db = \Skeleton\Database\Database::get();
-			$runner->run_transaction($this->transaction);
-			$this->transaction->unlock();
-
-			exit;
 		}
+
+		/**
+		 * Child
+		 */
+		posix_setsid();
+
+		$parallel = 'serial';
+
+		if ($this->transaction->parallel) {
+			$parallel = 'parallel';
+		}
+
+		cli_set_process_title(strtolower($this->transaction->classname) . ' (' . $this->transaction->id . ') - ' . $parallel);
+		$runner = new Runner();
+
+		$runner->run_transaction($this->transaction);
+		$this->transaction->unlock();
+
+		exit;
 	}
 
+	/**
+	 * Reset the process
+	 *
+	 * @access private
+	 */
+	private function reset(): void {
+		$this->running = false;
+		$this->transaction = null;
+		$this->pid = null;
+		$this->parallel = false;
+	}
 }

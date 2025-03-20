@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Module Monitor
  *
@@ -11,13 +14,12 @@ use Skeleton\Application\Web\Module;
 use Skeleton\Transaction\Daemon;
 
 class Monitor extends Module {
-
 	/**
 	 * Display the status
 	 *
 	 * @access public
 	 */
-	public function display() {
+	public function display(): void {
 		$status = Daemon::status();
 
 		$authorized = $this->authenticate();
@@ -30,11 +32,11 @@ class Monitor extends Module {
 		$message = '';
 
 		foreach ($status as $key => $check) {
-			if (is_callable( [$this, 'check_' . $key]) === false) {
+			if (is_callable([$this, 'check_' . $key]) === false) {
 				continue;
 			}
 
-			$error_code = call_user_func_array( [$this, 'check_' . $key], [ $check ]);
+			$error_code = call_user_func_array([$this, 'check_' . $key], [ $check ]);
 			if ($error_code > $error) {
 				$error = $error_code;
 				$message = 'check_' . $key . ': ' . $check['message'];
@@ -124,7 +126,7 @@ class Monitor extends Module {
 			return false;
 		}
 
-		if ($_SERVER['HTTP_X_AUTHENTICATION'] != \Skeleton\Transaction\Config::$monitor_authentication) {
+		if ($_SERVER['HTTP_X_AUTHENTICATION'] !== \Skeleton\Transaction\Config::$monitor_authentication) {
 			return false;
 		}
 

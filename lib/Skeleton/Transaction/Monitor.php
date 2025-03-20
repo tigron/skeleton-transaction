@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Monitor class
  *
@@ -7,22 +10,20 @@
 
 namespace Skeleton\Transaction;
 
-use \Skeleton\Database\Database;
+use Skeleton\Database\Database;
 
 class Monitor {
-
 	/**
 	 * @access private
-	 * @var array
 	 */
-	private $result;
+	private array $result;
 
 	/**
 	 * Run the monitoring
 	 *
 	 * @access public
 	 */
-	public function run() {
+	public function run(): void {
 		$monitor_file = Config::$monitor_file;
 		if ($monitor_file === null) {
 			return;
@@ -41,13 +42,15 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function handle_database() {
+	private function handle_database(): void {
 		try {
 			$db = Database::get();
-			$columns = $db->get_columns('transaction');
+
+			$db->get_columns('transaction');
+
 			$result = [
 				'result' => true,
-				'message' => 'Database connection ok'
+				'message' => 'Database connection ok',
 			];
 		} catch (\Throwable $e) {
 			$result = [
@@ -64,7 +67,7 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function handle_recurring() {
+	private function handle_recurring(): void {
 		$transactions = Transaction::get_failed_recurring();
 
 		$classnames = [];
@@ -83,7 +86,7 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function handle_last_update() {
+	private function handle_last_update(): void {
 		$this->result['last_update'] = [
 			'result' => (new \DateTime())->format('Y-m-d H:i:s'),
 			'message' => '',
@@ -95,7 +98,7 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function handle_runnable() {
+	private function handle_runnable(): void {
 		$this->result['runnable'] = [
 			'result' => Transaction::count_runnable(),
 			'message' => '',
@@ -107,7 +110,7 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function handle_last_successful() {
+	private function handle_last_successful(): void {
 		try {
 			$log = \Skeleton\Transaction\Log::get_last_successful();
 		} catch (\Exception $e) {
@@ -134,8 +137,7 @@ class Monitor {
 	 *
 	 * @access private
 	 */
-	private function write() {
+	private function write(): void {
 		file_put_contents(Config::$monitor_file, json_encode($this->result));
 	}
-
 }

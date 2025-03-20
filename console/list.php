@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * migration:create command for Skeleton Console
  *
@@ -9,23 +12,19 @@
 
 namespace Skeleton\Console\Command;
 
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableSeparator;
-use Symfony\Component\Console\Helper\TableStyle;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class Transaction_List extends \Skeleton\Console\Command {
-
 	/**
 	 * Configure the Create command
 	 *
 	 * @access protected
 	 */
-	protected function configure() {
+	protected function configure(): void {
 		$this->setName('transaction:list');
 		$this->setDescription('List transactions that are scheduled to be executed');
 	}
@@ -34,8 +33,6 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 * Execute the Command
 	 *
 	 * @access protected
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$trn_running = \Skeleton\Transaction\Transaction::get_running();
@@ -48,21 +45,21 @@ class Transaction_List extends \Skeleton\Console\Command {
 
 		$rows = [];
 
-		$rows[] = [ new TableCell('Running', array('colspan' => 4)) ];
+		$rows[] = [ new TableCell('Running', ['colspan' => 4]) ];
 		$rows[] = new TableSeparator();
 		$running_count = 0;
 		foreach ($trn_running as $transaction) {
-			if ($transaction->parallel == 0) {
+			if ($transaction->parallel === 0) {
 				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 				$running_count++;
 			}
 		}
-		if ($running_count == 0) {
+		if ($running_count === 0) {
 			$rows[] = [ 'FREE', 'FREE', 'FREE', 'NO' ];
 			$running_count++;
 		}
 		foreach ($trn_running as $transaction) {
-			if ($transaction->parallel == 1) {
+			if ($transaction->parallel === 1) {
 				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 				$running_count++;
 			}
@@ -73,22 +70,22 @@ class Transaction_List extends \Skeleton\Console\Command {
 
 		$rows[] = new TableSeparator();
 
-		$rows[] = [ new TableCell('Ready to run', array('colspan' => 3)) ];
+		$rows[] = [ new TableCell('Ready to run', ['colspan' => 3]) ];
 		$rows[] = new TableSeparator();
 		foreach ($trn_runnable as $transaction) {
 			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 		}
-		if (sizeof($trn_runnable) == 0) {
+		if (sizeof($trn_runnable) === 0) {
 			$rows[] = [ '/', '/', '/', '/' ];
 		}
 
 		$rows[] = new TableSeparator();
-		$rows[] = [ new TableCell('Scheduled', array('colspan' => 3)) ];
+		$rows[] = [ new TableCell('Scheduled', ['colspan' => 3]) ];
 		$rows[] = new TableSeparator();
 		foreach ($trn_scheduled as $transaction) {
 			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 		}
-		if (sizeof($trn_scheduled) == 0) {
+		if (sizeof($trn_scheduled) === 0) {
 			$rows[] = [ '/', '/', '/', '/' ];
 		}
 		$table->setRows($rows);
@@ -102,13 +99,11 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 *
 	 * @access private
 	 * @param Transaction
-	 * @return string
 	 */
-	private function show_parallel($transaction) {
-		if ($transaction->parallel == 0) {
-			return "NO";
-		} else {
-			return "";
+	private function show_parallel(\Skeleton\Transaction\Transaction $transaction): string {
+		if ($transaction->parallel === 0) {
+			return 'NO';
 		}
+		return '';
 	}
 }

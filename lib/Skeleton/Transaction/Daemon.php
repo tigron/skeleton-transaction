@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Transaction Runner
  *
@@ -12,25 +15,22 @@ class Daemon {
 	 * Maximum number of parallel processes
 	 *
 	 * @access private
-	 * @var int $max_processes
 	 */
-	private $max_processes = 5;
+	private int $max_processes = 5;
 
 	/**
 	 * Internal array of process slots
 	 *
 	 * @access private
-	 * @var array $processes
 	 */
-	private $processes = [];
+	private array $processes = [];
 
 	/**
 	 * Flags
 	 *
 	 * @access private
-	 * @var boolean $flag_stop
 	 */
-	private $flag_stop = false;
+	private bool $flag_stop = false;
 
 	/**
 	 * lock_timestamp
@@ -38,7 +38,7 @@ class Daemon {
 	 * @access private
 	 * @var $lock_timestamp
 	 */
-	private $lock_timestamp = null;
+	private string|int|null $lock_timestamp = null;
 
 	/**
 	 * Constructor
@@ -73,11 +73,31 @@ class Daemon {
 	}
 
 	/**
+	 * teardown
+	 *
+	 * @access private
+	 */
+	private function teardown(): void {
+		/**
+		 * Waiting for all processes to be terminated
+		 */
+		while ($this->transactions_running()) {
+			// Wait 0.5 seconds
+			usleep(500000);
+		}
+
+		/**
+		 * Remove the PID file
+		 */
+		$this->remove_lock();
+	}
+
+	/**
 	 * Run the daemon
 	 *
 	 * @access public
 	 */
-	public function run() {
+	public function run(): void {
 		$run = true;
 		while ($run) {
 			pcntl_signal_dispatch();
@@ -109,7 +129,7 @@ class Daemon {
 			}
 
 			// We have an idle process, try to load a transaction if there is one
-			if (count($transactions) == 0) {
+			if (count($transactions) === 0) {
 				sleep(1);
 				continue;
 			}
@@ -128,103 +148,13 @@ class Daemon {
 		$this->teardown();
 	}
 
-	private function teardown() {
-		/**
-		 * Waiting for all processes to be terminated
-		 */
-		while ($this->transactions_running()) {
-			// Wait 0.5 seconds
-			usleep(500000);
-		}
-
-		/**
-		 * Remove the PID file
-		 */
-		$this->remove_lock();
-	}
-
-	/**
-	 * Install signal handlers
-	 *
-	 * @access private
-	 */
-	private function install_signal_handlers() {
-		/**
-		 * Graceful shutdown
-		 */
-		pcntl_signal(SIGINT, [$this, 'handle_stop'] );
-		pcntl_signal(SIGTERM, [$this, 'handle_stop'] );
-	}
-
 	/**
 	 * Handle the stop signal
 	 *
 	 * @access private
 	 */
-	public function handle_stop() {
+	public function handle_stop(): void {
 		$this->flag_stop = true;
-	}
-
-	/**
-	 * Check if a serial transaction is running
-	 *
-	 * @access private
-	 * @return bool $serial_running
-	 */
-	private function serial_running() {
-		$serial_running = false;
-		foreach ($this->processes as $process) {
-			if ($process->is_running() and !$process->is_parallel()) {
-				$serial_running = true;
-			}
-		}
-		return $serial_running;
-	}
-
-	/**
-	 * Check if a transaction is running
-	 *
-	 * @access private
-	 * @return bool $transaction_running
-	 */
-	private function transactions_running() {
-		foreach ($this->processes as $process) {
-			if ($process->is_running()) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Get an idle process
-	 *
-	 * @access private
-	 * @return Process $process;
-	 */
-	private function get_idle_process() {
-		foreach ($this->processes as $key => $process) {
-			if (!$process->is_running()) {
-				return $process;
-			}
-		}
-		throw new \Exception('No idle processes');
-	}
-
-	/**
-	 * Get the lock
-	 *
-	 * @acces private
-	 */
-	private function get_lock() {
-		if (self::is_running()) {
-			throw new \Exception('Impossible to get lock, is Transaction Daemon already running?');
-		}
-
-		$pid_file = Config::$pid_file;
-		file_put_contents(Config::$pid_file, getmypid());
-
-		$this->lock_timestamp = time();
 	}
 
 	/**
@@ -232,21 +162,20 @@ class Daemon {
 	 *
 	 * @access public
 	 */
-	public function refresh_lock() {
+	public function refresh_lock(): void {
 		if (!file_exists(Config::$pid_file)) {
 			throw new \Exception('Problem with lock: Lock file does not exist');
 		}
 
-		$lock_pid = file_get_contents(Config::$pid_file);
-		if ($lock_pid != getmypid()) {
+		$lock_pid = (int)file_get_contents(Config::$pid_file);
+		if ($lock_pid !== getmypid()) {
 			throw new \Exception('Problem with lock: Pid in lock is not ours');
 		}
 
-		if (time() - $this->lock_timestamp <=5) {
+		if (time() - $this->lock_timestamp <= 5) {
 			return;
 		}
 
-		$pid_file = Config::$pid_file;
 		file_put_contents(Config::$pid_file, getmypid());
 
 		$this->lock_timestamp = time();
@@ -255,42 +184,12 @@ class Daemon {
 	}
 
 	/**
-	 * Monitor the Daemon
-	 *
-	 * @access private
-	 */
-	private function monitor() {
-		$monitor = new Monitor();
-		$monitor->run();
-	}
-
-	/**
-	 * Remove lock
-	 *
-	 * @acces private
-	 */
-	private function remove_lock() {
-		if (!file_exists(Config::$pid_file)) {
-			throw new \Exception('Problem with lock: Lock file does not exist');
-		}
-
-		$lock_pid = file_get_contents(Config::$pid_file);
-		if ($lock_pid != getmypid()) {
-			throw new \Exception('Problem with lock: Pid in lock is not ours ' . $lock_pid . ' ' . getmypid());
-		}
-
-		unlink(Config::$pid_file);
-
-		$this->lock_timestamp = null;
-	}
-
-	/**
 	 * Get status
 	 *
 	 * @access public
 	 * @return array $status
 	 */
-	public static function status() {
+	public static function status(): array {
 		$status = file_get_contents(Config::$monitor_file);
 		return json_decode($status, true);
 	}
@@ -300,15 +199,16 @@ class Daemon {
 	 *
 	 * @access public
 	 */
-	public static function start() {
+	public static function start(): void {
 		if (self::is_running()) {
 			throw new \Exception('Transaction daemon is already running');
 		}
 
 		$pid = pcntl_fork();
-		if ($pid == -1) {
+		if ($pid === -1) {
 			throw new \Exception('Error while forking');
-		} elseif ($pid) {
+		}
+		if ($pid) {
 			echo 'Daemon started, PID: ' . $pid . "\n";
 		} else {
 			// Child
@@ -330,7 +230,7 @@ class Daemon {
 			throw new \Exception('Transaction daemon is not running');
 		}
 
-		$pid = file_get_contents(Config::$pid_file);
+		$pid = (int)file_get_contents(Config::$pid_file);
 		$return = posix_kill($pid, SIGTERM);
 		echo 'Stopping daemon' . "\n";
 
@@ -355,11 +255,115 @@ class Daemon {
 	 * @access public
 	 * @return bool $running
 	 */
-	public static function is_running() {
+	public static function is_running(): bool {
 		if (!file_exists(Config::$pid_file)) {
 			return false;
 		}
 
 		return true;
+	}
+
+	/**
+	 * Install signal handlers
+	 *
+	 * @access private
+	 */
+	private function install_signal_handlers(): void {
+		/**
+		 * Graceful shutdown
+		 */
+		pcntl_signal(SIGINT, [$this, 'handle_stop']);
+		pcntl_signal(SIGTERM, [$this, 'handle_stop']);
+	}
+
+	/**
+	 * Check if a serial transaction is running
+	 *
+	 * @access private
+	 * @return bool $serial_running
+	 */
+	private function serial_running(): bool {
+		$serial_running = false;
+		foreach ($this->processes as $process) {
+			if ($process->is_running() and !$process->is_parallel()) {
+				$serial_running = true;
+			}
+		}
+		return $serial_running;
+	}
+
+	/**
+	 * Check if a transaction is running
+	 *
+	 * @access private
+	 * @return bool $transaction_running
+	 */
+	private function transactions_running(): bool {
+		foreach ($this->processes as $process) {
+			if ($process->is_running()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get an idle process
+	 *
+	 * @access private
+	 * @return Process $process;
+	 */
+	private function get_idle_process(): Process {
+		foreach ($this->processes as $process) {
+			if (!$process->is_running()) {
+				return $process;
+			}
+		}
+		throw new \Exception('No idle processes');
+	}
+
+	/**
+	 * Get the lock
+	 *
+	 * @acces private
+	 */
+	private function get_lock(): void {
+		if (self::is_running()) {
+			throw new \Exception('Impossible to get lock, is Transaction Daemon already running?');
+		}
+
+		file_put_contents(Config::$pid_file, getmypid());
+
+		$this->lock_timestamp = time();
+	}
+
+	/**
+	 * Monitor the Daemon
+	 *
+	 * @access private
+	 */
+	private function monitor(): void {
+		$monitor = new Monitor();
+		$monitor->run();
+	}
+
+	/**
+	 * Remove lock
+	 *
+	 * @acces private
+	 */
+	private function remove_lock(): void {
+		if (!file_exists(Config::$pid_file)) {
+			throw new \Exception('Problem with lock: Lock file does not exist');
+		}
+
+		$lock_pid = (int)file_get_contents(Config::$pid_file);
+		if ($lock_pid !== getmypid()) {
+			throw new \Exception('Problem with lock: Pid in lock is not ours ' . $lock_pid . ' ' . getmypid());
+		}
+
+		unlink(Config::$pid_file);
+
+		$this->lock_timestamp = null;
 	}
 }

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Transaction Runner
  *
@@ -8,13 +11,13 @@
 namespace Skeleton\Transaction;
 
 class Runner {
-
 	/**
 	 * Constructor
 	 *
 	 * @access public
 	 */
-	public function __construct() { }
+	public function __construct() {
+	}
 
 	/**
 	 * Run transaction, acquire one if none set
@@ -22,7 +25,7 @@ class Runner {
 	 * @access private
 	 * @param Transaction
 	 */
-	public static function run_transaction(Transaction $transaction) {
+	public static function run_transaction(Transaction $transaction): void {
 		ob_start();
 		echo date('[r] ') . 'Running ' . $transaction->classname . ' - ' . $transaction->id . "\n";
 

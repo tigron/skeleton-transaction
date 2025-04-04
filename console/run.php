@@ -36,7 +36,7 @@ class Transaction_Run extends \Skeleton\Console\Command {
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$transactions = [];
 		if ($input->getArgument('id')) {
-			$transactions[] = \Skeleton\Transaction\Transaction::get_by_id($input->getArgument('id'));
+			$transactions[] = \Skeleton\Transaction\Transaction::get_by_id((int)$input->getArgument('id'));
 		} else {
 			$transactions = \Skeleton\Transaction\Transaction::get_runnable();
 		}

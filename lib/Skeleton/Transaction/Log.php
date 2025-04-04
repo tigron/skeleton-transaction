@@ -56,9 +56,9 @@ class Log {
 	 * Get last by transaction
 	 *
 	 * @access public
-	 * @return array $transaction_logs
+	 * @return \Skeleton\Transaction\Log
 	 */
-	public static function get_last_by_transaction(Transaction $transaction): array {
+	public static function get_last_by_transaction(Transaction $transaction): self {
 		$db = Database::get();
 		$id = $db->get_one('SELECT id FROM transaction_log WHERE transaction_id=? ORDER BY created DESC LIMIT 1;', [ $transaction->id ]);
 
@@ -73,8 +73,9 @@ class Log {
 	 * Get last successful
 	 *
 	 * @access public
+  	 * @return \Skeleton\Transaction\Log
 	 */
-	public static function get_last_successful() {
+	public static function get_last_successful(): self {
 		$db = Database::get();
 		$id = $db->get_one('SELECT id FROM transaction_log WHERE failed=0 ORDER BY created DESC LIMIT 1;', []);
 

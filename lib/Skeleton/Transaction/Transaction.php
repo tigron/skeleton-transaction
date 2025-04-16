@@ -97,13 +97,15 @@ abstract class Transaction {
 	 * Get last transaction_log
 	 *
 	 * @access public
+	 * @return ?Log $log
 	 */
-	public function get_last_transaction_log(): Log {
+	public function get_last_transaction_log(): ?Log {
 		try {
 			return Log::get_last_by_transaction($this);
 		} catch (\Exception $e) {
-			return null;
 		}
+
+		return null;
 	}
 
 	/**
@@ -159,12 +161,18 @@ abstract class Transaction {
 	 * @return bool $scheduled
 	 */
 	public function is_scheduled(): bool {
-		if ($this->completed) {
+		if ((bool) $this->completed === true) {
 			return false;
 		}
-		if (new \DateTime($this->scheduled_at) >= new \DateTime() && !$this->locked) {
+
+		if (
+			isset($this->scheduled_at) === true
+			&& new \DateTime($this->scheduled_at) >= new \DateTime()
+			&& (bool) $this->locked === false
+		) {
 			return true;
 		}
+
 		return false;
 	}
 
@@ -181,7 +189,7 @@ abstract class Transaction {
 		// refresh the current object's details before verifying the lock status
 		$this->get_details();
 
-		if ($this->locked) {
+		if ((bool) $this->locked === true) {
 			$db->release_lock('runnable');
 			throw new Exception\Locked();
 		}
@@ -217,7 +225,7 @@ abstract class Transaction {
 		$this->save();
 
 		// Report exception
-		if (class_exists('\Skeleton\Error\Handler')) {
+		if (class_exists('\Skeleton\Error\Handler') === true) {
 			$handler = \Skeleton\Error\Handler::enable();
 			$handler->report_exception($exception);
 		}
@@ -232,14 +240,16 @@ abstract class Transaction {
 		Log::create($this, false, $output, null, $date);
 
 		// Don't mark this transaction as completed if it has been rescheduled.
-		if ($this->rescheduled) {
+		if ((bool) $this->rescheduled === true) {
 			return;
 		}
 
 		$this->failed = false;
-		if (!$this->recurring) {
+
+		if ((bool) $this->recurring === false) {
 			$this->completed = true;
 		}
+
 		$this->retry_attempt = 0;
 		$this->save();
 	}
@@ -262,7 +272,7 @@ abstract class Transaction {
 	 */
 	public static function get_by_id(int $id) {
 		$db = Database::get();
-		$classname = $db->get_one('SELECT classname FROM transaction WHERE id = ?', [ $id ]);
+		$classname = $db->get_one('SELECT classname FROM transaction WHERE id = ?', [$id]);
 
 		if ($classname === null) {
 			throw new \Exception('Transaction not found');
@@ -280,7 +290,7 @@ abstract class Transaction {
 	public static function get_by_classname(string $classname, ?int $limit = null): array {
 		$db = Database::get();
 		$query = 'SELECT id FROM transaction WHERE classname = ? ORDER BY id DESC';
-		$params = [ $classname ];
+		$params = [$classname];
 
 		if ($limit !== null) {
 			$query .= ' LIMIT ?';
@@ -289,12 +299,7 @@ abstract class Transaction {
 
 		$ids = $db->get_column($query, $params);
 
-		$transactions = [];
-		foreach ($ids as $id) {
-			$transactions[] = self::get_by_id($id);
-		}
-
-		return $transactions;
+		return self::get_by_ids($ids);
 	}
 
 	/**
@@ -320,12 +325,7 @@ abstract class Transaction {
 			LIMIT ?;
 		', [ Config::$max_processes ]);
 
-		$transactions = [];
-		foreach ($ids as $id) {
-			$transactions[] = self::get_by_id($id);
-		}
-
-		return $transactions;
+		return self::get_by_ids($ids);
 	}
 
 	/**
@@ -336,7 +336,7 @@ abstract class Transaction {
 	public static function count_runnable(): int {
 		$db = Database::get();
 
-		return (int)$db->get_one('
+		return (int) $db->get_one('
 			SELECT count(1) FROM
 				(SELECT failed, locked, scheduled_at FROM transaction WHERE scheduled_at < NOW() AND completed = 0) AS transaction
 			WHERE 1
@@ -355,12 +355,7 @@ abstract class Transaction {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW();', []);
 
-		$transactions = [];
-		foreach ($ids as $id) {
-			$transactions[] = self::get_by_id($id);
-		}
-
-		return $transactions;
+		return self::get_by_ids($ids);
 	}
 
 	/**
@@ -372,12 +367,7 @@ abstract class Transaction {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE locked = 1 AND completed = 0 ORDER BY parallel ASC;', []);
 
-		$transactions = [];
-		foreach ($ids as $id) {
-			$transactions[] = self::get_by_id($id);
-		}
-
-		return $transactions;
+		return self::get_by_ids($ids);
 	}
 
 	/**
@@ -400,11 +390,6 @@ abstract class Transaction {
 		$db = Database::get();
 		$ids = $db->get_column('SELECT id FROM transaction WHERE recurring = 1 AND (failed = 1 OR completed = 1);', []);
 
-		$transactions = [];
-		foreach ($ids as $id) {
-			$transactions[] = self::get_by_id($id);
-		}
-
-		return $transactions;
+		return self::get_by_ids($ids);
 	}
 }

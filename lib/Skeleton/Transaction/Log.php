@@ -33,7 +33,7 @@ class Log {
 	 * Get by transaction
 	 *
 	 * @access public
-	 * @return array $transaction_logs
+	 * @return array $logs
 	 */
 	public static function get_by_transaction(Transaction $transaction, ?int $limit = null): array {
 		$db = Database::get();
@@ -44,12 +44,7 @@ class Log {
 			$ids = array_reverse($ids);
 		}
 
-		$transaction_logs = [];
-		foreach ($ids as $id) {
-			$transaction_logs[] = self::get_by_id($id);
-		}
-
-		return $transaction_logs;
+		return self::get_by_ids($ids);
 	}
 
 	/**
@@ -73,7 +68,7 @@ class Log {
 	 * Get last successful
 	 *
 	 * @access public
-  	 * @return \Skeleton\Transaction\Log
+ 	 * @return \Skeleton\Transaction\Log
 	 */
 	public static function get_last_successful(): self {
 		$db = Database::get();
@@ -88,6 +83,9 @@ class Log {
 
 	/**
 	 * Create log.
+	 *
+	 * @access public
+	 * @return Log $log
 	 */
 	public static function create(Transaction $transaction, bool $failed, string $output = '', ?\Throwable $t = null, ?string $date = null): self {
 		$log = new self();

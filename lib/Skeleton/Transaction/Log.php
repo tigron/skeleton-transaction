@@ -51,7 +51,7 @@ class Log {
 	 * Get last by transaction
 	 *
 	 * @access public
-	 * @return Log $log
+	 * @return \Skeleton\Transaction\Log
 	 */
 	public static function get_last_by_transaction(Transaction $transaction): self {
 		$db = Database::get();
@@ -68,7 +68,7 @@ class Log {
 	 * Get last successful
 	 *
 	 * @access public
-	 * @return Log $log
+ 	 * @return \Skeleton\Transaction\Log
 	 */
 	public static function get_last_successful(): self {
 		$db = Database::get();

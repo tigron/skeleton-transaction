@@ -33,7 +33,7 @@ class Transaction_Log extends \Skeleton\Console\Command {
 	 *
 	 * @access protected
 	 */
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$arg = $input->getArgument('id_or_classname');
 		$transaction = null;
 		$transaction_log = null;

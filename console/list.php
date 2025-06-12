@@ -34,7 +34,7 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 *
 	 * @access protected
 	 */
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$trn_running = \Skeleton\Transaction\Transaction::get_running();
 		$trn_runnable = \Skeleton\Transaction\Transaction::get_runnable();
 		$trn_scheduled = \Skeleton\Transaction\Transaction::get_scheduled();

@@ -37,7 +37,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 	 *
 	 * @access protected
 	 */
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$action = $input->getArgument('action');
 		if (!is_callable([ $this, $action ])) {
 			$output->writeln('<error>Please specify a valid action: start/stop/status</error>');

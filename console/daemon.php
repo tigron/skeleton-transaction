@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * migration:create command for Skeleton Console
+ * transaction:daemon command for Skeleton Console
  *
  * @author Gerry Demaret <gerry@tigron.be>
  * @author Christophe Gosiau <christophe@tigron.be>
@@ -43,7 +43,8 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 			$output->writeln('<error>Please specify a valid action: start/stop/status</error>');
 			return 1;
 		}
-		return $this->$action($input, $output);
+
+		return (int)$this->$action($input, $output);
 	}
 
 	/**
@@ -104,7 +105,7 @@ class Transaction_Daemon extends \Skeleton\Console\Command {
 			$daemon = new Daemon();
 			$daemon->run();
 		} catch (\Exception $e) {
-			$output->writeln('<error>' . $e->getMessage() . ': daemon not stopped</error>');
+			$output->writeln('<error>' . $e->getMessage() . ': daemon not started</error>');
 			return 1;
 		}
 	}

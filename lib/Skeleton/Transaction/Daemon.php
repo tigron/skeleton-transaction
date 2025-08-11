@@ -70,6 +70,9 @@ class Daemon {
 
 		// unlocking all transactions in case the process did not stop properly
 		Transaction::unlock_all();
+
+		// Call unlock on the transaction lock_handler (in case it is persistent)
+		\Skeleton\Lock\Handler::get()::release_lock('transaction_runnable');
 	}
 
 	/**
@@ -138,6 +141,9 @@ class Daemon {
 
 			try {
 				$process->load_transaction($transaction);
+			} catch (\Skeleton\Lock\Exception\Failed $e) {
+				// If the process could not obtain an exclusive lock, bail out
+				continue;
 			} catch (Exception\Locked $e) {
 				// If the transaction has been locked by another thread, bail out
 				continue;

@@ -74,7 +74,6 @@ Show the log of a transaction
 
     skeleton transaction:log <transaction_id_or_classname>
 
-
 ## Monitor the daemon with Nagios
 
 Skeleton Transaction Daemon can be monitored via its status file. The status

@@ -42,6 +42,7 @@ abstract class Transaction {
 		$classname = get_called_class();
 		$this->classname = substr($classname, strpos($classname, '_') + 1);
 		$this->parallel = $this->parallel();
+		$this->weight = $this->get_weight();
 
 		$this->trait_construct($id);
 	}
@@ -183,21 +184,21 @@ abstract class Transaction {
 	 * @param string $date
 	 */
 	public function lock(): void {
-		$db = Database::get();
-		$db->get_lock('runnable');
+		$lock_name = 'transaction_runnable';
+		\Skeleton\Lock\Handler::get()::get_lock($lock_name);
 
 		// refresh the current object's details before verifying the lock status
 		$this->get_details();
 
 		if ((bool) $this->locked === true) {
-			$db->release_lock('runnable');
+			\Skeleton\Lock\Handler::get()::release_lock($lock_name);
 			throw new Exception\Locked();
 		}
 
 		$this->locked = true;
 		$this->save();
 
-		$db->release_lock('runnable');
+		\Skeleton\Lock\Handler::get()::release_lock($lock_name);
 	}
 
 	/**
@@ -252,6 +253,15 @@ abstract class Transaction {
 
 		$this->retry_attempt = 0;
 		$this->save();
+	}
+
+	/**
+	 * Get the weight of this transaction
+	 *
+	 * @access public
+	 */
+	public function get_weight(): int {
+		return 10;
 	}
 
 	/**
@@ -311,7 +321,7 @@ abstract class Transaction {
 		$db = Database::get();
 		$ids = $db->get_column('
 			SELECT id FROM
-				(	SELECT id, failed, locked, scheduled_at
+				(	SELECT id, failed, locked, scheduled_at, weight
 					FROM transaction
 					WHERE 1
 					AND scheduled_at < NOW()
@@ -321,7 +331,7 @@ abstract class Transaction {
 			AND scheduled_at IS NOT NULL
 			AND failed = 0
 			AND locked = 0
-			ORDER BY scheduled_at, id
+			ORDER BY weight ASC, scheduled_at, id
 			LIMIT ?;
 		', [ Config::$max_processes ]);
 

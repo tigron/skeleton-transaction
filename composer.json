@@ -10,7 +10,8 @@
 		"php": ">=8.2",
 		"tigron/skeleton-object": ">=1.1",
 		"tigron/skeleton-database": ">=0.3",
-		"tigron/skeleton-core": ">=5"
+		"tigron/skeleton-core": ">=5",
+        "tigron/skeleton-lock": ">=1.0"
     },
     "license": "MIT",
     "authors": [

@@ -72,7 +72,7 @@ class Daemon {
 		Transaction::unlock_all();
 
 		// Call unlock on the transaction lock_handler (in case it is persistent)
-		\Skeleton\Lock\Handler::get()::release_lock('transaction_runnable');
+		\Skeleton\Lock\Handler::get()::release('transaction_runnable');
 	}
 
 	/**

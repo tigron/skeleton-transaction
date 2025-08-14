@@ -185,20 +185,20 @@ abstract class Transaction {
 	 */
 	public function lock(): void {
 		$lock_name = 'transaction_runnable';
-		\Skeleton\Lock\Handler::get()::get_lock($lock_name);
+		\Skeleton\Lock\Handler::get()::obtain($lock_name);
 
 		// refresh the current object's details before verifying the lock status
 		$this->get_details();
 
 		if ((bool) $this->locked === true) {
-			\Skeleton\Lock\Handler::get()::release_lock($lock_name);
+			\Skeleton\Lock\Handler::get()::release($lock_name);
 			throw new Exception\Locked();
 		}
 
 		$this->locked = true;
 		$this->save();
 
-		\Skeleton\Lock\Handler::get()::release_lock($lock_name);
+		\Skeleton\Lock\Handler::get()::release($lock_name);
 	}
 
 	/**

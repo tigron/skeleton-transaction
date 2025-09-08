@@ -49,7 +49,7 @@ class Transaction_List extends \Skeleton\Console\Command {
 		$rows[] = new TableSeparator();
 		$running_count = 0;
 		foreach ($trn_running as $transaction) {
-			if ($transaction->parallel === 0) {
+			if ((bool)$transaction->parallel === false) {
 				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 				$running_count++;
 			}
@@ -59,7 +59,7 @@ class Transaction_List extends \Skeleton\Console\Command {
 			$running_count++;
 		}
 		foreach ($trn_running as $transaction) {
-			if ($transaction->parallel === 1) {
+			if ((bool)$transaction->parallel === true) {
 				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
 				$running_count++;
 			}
@@ -101,7 +101,7 @@ class Transaction_List extends \Skeleton\Console\Command {
 	 * @param Transaction
 	 */
 	private function show_parallel(\Skeleton\Transaction\Transaction $transaction): string {
-		if ($transaction->parallel === 0) {
+		if ((bool)$transaction->parallel === false) {
 			return 'NO';
 		}
 		return '';

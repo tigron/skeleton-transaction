@@ -33,13 +33,6 @@ class Process {
 	private ?int $pid = null;
 
 	/**
-	 * Parallel
-	 *
-	 * @access private
-	 */
-	private ?bool $parallel = false;
-
-	/**
 	 * Constructor
 	 *
 	 * @access public
@@ -54,7 +47,6 @@ class Process {
 	 * @access public
 	 */
 	public function handle_stop(): void {
-		echo 'stop child' . $this->pid . "\n";
 		exit;
 	}
 
@@ -67,7 +59,19 @@ class Process {
 	public function load_transaction(\Skeleton\Transaction\Transaction $transaction): void {
 		$this->transaction = $transaction;
 		$this->transaction->lock();
-		$this->parallel = $this->transaction->parallel;
+	}
+
+	/**
+	 * Get the current pool we are running a transaction for
+	 *
+	 * @access public
+	 */
+	public function get_pool(): ?string {
+		if ($this->is_running() && $this->transaction !== null) {
+			return $this->transaction->get_pool();
+		}
+
+		return null;
 	}
 
 	/**
@@ -91,17 +95,6 @@ class Process {
 	}
 
 	/**
-	 * Is parallel
-	 *
-	 * @access public
-	 * @return bool $is_parallel
-	 */
-	public function is_parallel(): bool {
-		$this->is_running();
-		return $this->parallel;
-	}
-
-	/**
 	 * Run the transaction
 	 *
 	 * @access public
@@ -117,26 +110,22 @@ class Process {
 		}
 
 		if ($pid) {
-			/**
-			 * Parent
-			 */
+			// parent process
 			$this->pid = $pid;
 			$this->running = true;
 			return;
 		}
 
-		/**
-		 * Child
-		 */
+		// child process
 		posix_setsid();
 
-		$parallel = 'serial';
+		$pool = '';
 
-		if ($this->transaction->parallel) {
-			$parallel = 'parallel';
+		if ($this->transaction->pool !== null) {
+			$pool = ' pool: ' . $this->transaction->pool;
 		}
 
-		cli_set_process_title(strtolower($this->transaction->classname) . ' (' . $this->transaction->id . ') - ' . $parallel);
+		cli_set_process_title(strtolower($this->transaction->classname) . ' (' . $this->transaction->id . ')' . $pool);
 		$runner = new Runner();
 
 		$runner->run_transaction($this->transaction);
@@ -154,6 +143,6 @@ class Process {
 		$this->running = false;
 		$this->transaction = null;
 		$this->pid = null;
-		$this->parallel = false;
+		$this->pool = null;
 	}
 }

@@ -41,29 +41,24 @@ class Transaction_List extends \Skeleton\Console\Command {
 
 		$table = new Table($output);
 
-		$table->setHeaders(['ID', 'Type', 'Scheduled at', '//']);
+		$table->setHeaders(['ID', 'Type', 'Scheduled at', 'Pool']);
 
 		$rows = [];
 
 		$rows[] = [ new TableCell('Running', ['colspan' => 4]) ];
 		$rows[] = new TableSeparator();
 		$running_count = 0;
+
 		foreach ($trn_running as $transaction) {
-			if ((bool)$transaction->parallel === false) {
-				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
-				$running_count++;
-			}
-		}
-		if ($running_count === 0) {
-			$rows[] = [ 'FREE', 'FREE', 'FREE', 'NO' ];
+			$rows[] = [
+				$transaction->id,
+				$transaction->classname,
+				$transaction->scheduled_at,
+				(string)$transaction->pool,
+			];
 			$running_count++;
 		}
-		foreach ($trn_running as $transaction) {
-			if ((bool)$transaction->parallel === true) {
-				$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
-				$running_count++;
-			}
-		}
+
 		for ($i = $running_count; $i < \Skeleton\Transaction\Config::$max_processes; $i++) {
 			$rows[] = [ 'FREE', 'FREE', 'FREE', '' ];
 		}
@@ -73,37 +68,37 @@ class Transaction_List extends \Skeleton\Console\Command {
 		$rows[] = [ new TableCell('Ready to run', ['colspan' => 3]) ];
 		$rows[] = new TableSeparator();
 		foreach ($trn_runnable as $transaction) {
-			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
+			$rows[] = [
+				$transaction->id,
+				$transaction->classname,
+				$transaction->scheduled_at,
+				(string)$transaction->pool,
+			];
 		}
-		if (sizeof($trn_runnable) === 0) {
-			$rows[] = [ '/', '/', '/', '/' ];
+
+		if (count($trn_runnable) === 0) {
+			$rows[] = [ ' ', ' ', ' ', ' ' ];
 		}
 
 		$rows[] = new TableSeparator();
 		$rows[] = [ new TableCell('Scheduled', ['colspan' => 3]) ];
 		$rows[] = new TableSeparator();
 		foreach ($trn_scheduled as $transaction) {
-			$rows[] = [ $transaction->id, $transaction->classname, $transaction->scheduled_at, $this->show_parallel($transaction) ];
+			$rows[] = [
+				$transaction->id,
+				$transaction->classname,
+				$transaction->scheduled_at,
+				(string)$transaction->pool,
+			];
 		}
-		if (sizeof($trn_scheduled) === 0) {
-			$rows[] = [ '/', '/', '/', '/' ];
+
+		if (count($trn_scheduled) === 0) {
+			$rows[] = [ ' ', ' ', ' ', ' ' ];
 		}
+
 		$table->setRows($rows);
 		$table->render();
 
 		return 0;
-	}
-
-	/**
-	 * show_parallel()
-	 *
-	 * @access private
-	 * @param Transaction
-	 */
-	private function show_parallel(\Skeleton\Transaction\Transaction $transaction): string {
-		if ((bool)$transaction->parallel === false) {
-			return 'NO';
-		}
-		return '';
 	}
 }

@@ -12,57 +12,47 @@ namespace Skeleton\Transaction;
 
 class Daemon {
 	/**
-	 * Maximum number of parallel processes
-	 *
-	 * @access private
+	 * Maximum number of processes, set via Config
 	 */
-	private int $max_processes = 5;
+	private int $max_processes = 10;
 
 	/**
 	 * Internal array of process slots
 	 *
-	 * @access private
+	 * @var array<Process>
 	 */
 	private array $processes = [];
 
 	/**
 	 * Flags
-	 *
-	 * @access private
 	 */
 	private bool $flag_stop = false;
 
 	/**
 	 * lock_timestamp
-	 *
-	 * @access private
-	 * @var $lock_timestamp
 	 */
 	private string|int|null $lock_timestamp = null;
 
 	/**
+	 * PID of the monitor thread
+	 */
+	private ?int $monitor_pid = null;
+
+	/**
 	 * Constructor
-	 *
-	 * @access private
 	 */
 	public function __construct() {
 		if (self::is_running()) {
 			throw new \Exception('Transaction daemon already running');
 		}
 
-		/**
-		 * Get lock file
-		 */
+		// acquire a lock
 		$this->get_lock();
 
-		/**
-		 * Install the signal handlers
-		 */
+		// install the signal handlers
 		$this->install_signal_handlers();
 
-		/**
-		 * Provision the processes
-		 */
+		// provision the desired number of processes
 		$this->max_processes = Config::$max_processes;
 		for ($i = 0; $i < $this->max_processes; $i++) {
 			$this->processes[$i] = new Process();
@@ -71,7 +61,7 @@ class Daemon {
 		// unlocking all transactions in case the process did not stop properly
 		Transaction::unlock_all();
 
-		// Call unlock on the transaction lock_handler (in case it is persistent)
+		// call unlock on the transaction lock_handler (in case it is persistent)
 		\Skeleton\Lock\Handler::get()::release('transaction_runnable');
 	}
 
@@ -101,6 +91,8 @@ class Daemon {
 	 * @access public
 	 */
 	public function run(): void {
+		$last_transaction = time();
+
 		$run = true;
 		while ($run) {
 			pcntl_signal_dispatch();
@@ -115,30 +107,31 @@ class Daemon {
 			try {
 				$process = $this->get_idle_process();
 			} catch (\Exception $e) {
-				// No processes available, sleep for a bit and try again
-				sleep(1);
+				// No processes available, sleep for 0.05s and try again
+				// We're probably very busy so a short retry should be good
+				usleep(50000);
 				continue;
 			}
 
-			$transactions = Transaction::get_runnable();
-
-			// If we are running a serial process, prevent a new serial from starting
-			if ($this->serial_running()) {
-				foreach ($transactions as $key => $transaction) {
-					if (!$transaction->parallel) {
-						unset($transactions[$key]);
-					}
-				}
-			}
+			// This is by definition a single thread, so it should be safe to
+			// get the currently running pools from here and exclude those from
+			// the fetched transaction list
+			$running_pools = $this->get_running_pools();
+			$transactions = Transaction::get_runnable(exclude_pools: $running_pools);
 
 			// We have an idle process, try to load a transaction if there is one
 			if (count($transactions) === 0) {
-				sleep(1);
+				// back off for 0.2 to 5 seconds, depending on when we last did
+				// something
+				$since_last_transaction = time() - $last_transaction;
+				$backoff = min(5, (floor($since_last_transaction / 5) * 0.2) + 0.2);
+				usleep((int)($backoff * 1000000));
 				continue;
 			}
 
-			$transaction = array_shift($transactions);
+			$last_transaction = time();
 
+			$transaction = array_shift($transactions);
 			try {
 				$process->load_transaction($transaction);
 			} catch (\Skeleton\Lock\Exception\Failed $e) {
@@ -170,14 +163,15 @@ class Daemon {
 	 */
 	public function refresh_lock(): void {
 		if (!file_exists(Config::$pid_file)) {
-			throw new \Exception('Problem with lock: Lock file does not exist');
+			throw new \Exception('Problem with lock: lock file does not exist');
 		}
 
 		$lock_pid = (int)file_get_contents(Config::$pid_file);
 		if ($lock_pid !== getmypid()) {
-			throw new \Exception('Problem with lock: Pid in lock is not ours');
+			throw new \Exception('Problem with lock: PID in lock is not ours');
 		}
 
+		// bail out if the lock is still fresh
 		if (time() - $this->lock_timestamp <= 5) {
 			return;
 		}
@@ -193,7 +187,7 @@ class Daemon {
 	 * Get status
 	 *
 	 * @access public
-	 * @return array $status
+	 * @return array<string> Array with status information
 	 */
 	public static function status(): array {
 		$status = file_get_contents(Config::$monitor_file);
@@ -231,7 +225,7 @@ class Daemon {
 	 *
 	 * @access public
 	 */
-	public static function stop() {
+	public static function stop(): bool {
 		if (!self::is_running()) {
 			throw new \Exception('Transaction daemon is not running');
 		}
@@ -283,22 +277,6 @@ class Daemon {
 	}
 
 	/**
-	 * Check if a serial transaction is running
-	 *
-	 * @access private
-	 * @return bool $serial_running
-	 */
-	private function serial_running(): bool {
-		$serial_running = false;
-		foreach ($this->processes as $process) {
-			if ($process->is_running() and !$process->is_parallel()) {
-				$serial_running = true;
-			}
-		}
-		return $serial_running;
-	}
-
-	/**
 	 * Check if a transaction is running
 	 *
 	 * @access private
@@ -320,12 +298,39 @@ class Daemon {
 	 * @return Process $process;
 	 */
 	private function get_idle_process(): Process {
+		// not immediately returning a process upon match as is_running() will
+		// call waitpid() on the process, which in case the process had stopped
+		// will make the cleanup happen faster
+		$idle_process = null;
 		foreach ($this->processes as $process) {
 			if (!$process->is_running()) {
-				return $process;
+				$idle_process = $process;
 			}
 		}
+
+		if ($idle_process !== null) {
+			return $idle_process;
+		}
+
 		throw new \Exception('No idle processes');
+	}
+
+	/**
+	 * Get the pools we are currently running a process for
+	 *
+	 * @return array<string> List of pools for which we currently have a running process
+	 * @access private
+	 */
+	private function get_running_pools(): array {
+		$pools = [];
+		foreach ($this->processes as $process) {
+			$process_pool = $process->get_pool();
+			if ($process_pool !== null) {
+				$pools[] = $process_pool;
+			}
+		}
+
+		return array_unique($pools);
 	}
 
 	/**
@@ -335,7 +340,7 @@ class Daemon {
 	 */
 	private function get_lock(): void {
 		if (self::is_running()) {
-			throw new \Exception('Impossible to get lock, is Transaction Daemon already running?');
+			throw new \Exception('Could not get lock, is the daemon already running?');
 		}
 
 		file_put_contents(Config::$pid_file, getmypid());
@@ -349,8 +354,43 @@ class Daemon {
 	 * @access private
 	 */
 	private function monitor(): void {
-		$monitor = new Monitor();
-		$monitor->run();
+		// clean up previous monitor child if there was one, if it still exists
+		// then don't start another just yet
+		if ($this->monitor_pid !== null) {
+			$exited_pid = pcntl_waitpid($this->monitor_pid, $status, WNOHANG);
+
+			if ($exited_pid === $this->monitor_pid) {
+				$this->monitor_pid = null;
+			} else {
+				return;
+			}
+		}
+
+		$pid = pcntl_fork();
+
+		\Skeleton\Database\Database::reset();
+
+		// if pid is -1 we couldn't fork and things will probably not go well
+		// from here, perhaps add some graceful recovery
+
+		if ($pid) {
+			// parent process, $pid is the forked process
+
+			$this->monitor_pid = $pid;
+			return;
+		}
+
+		if ($pid === 0) {
+			// child process
+
+			posix_setsid();
+			cli_set_process_title('monitor');
+
+			$monitor = new Monitor();
+			$monitor->run();
+
+			exit(0);
+		}
 	}
 
 	/**
@@ -360,12 +400,12 @@ class Daemon {
 	 */
 	private function remove_lock(): void {
 		if (!file_exists(Config::$pid_file)) {
-			throw new \Exception('Problem with lock: Lock file does not exist');
+			throw new \Exception('Problem with lock: lock file does not exist');
 		}
 
 		$lock_pid = (int)file_get_contents(Config::$pid_file);
 		if ($lock_pid !== getmypid()) {
-			throw new \Exception('Problem with lock: Pid in lock is not ours ' . $lock_pid . ' ' . getmypid());
+			throw new \Exception('Problem with lock: PID is not ours, ' . $lock_pid . ' while we are ' . getmypid());
 		}
 
 		unlink(Config::$pid_file);

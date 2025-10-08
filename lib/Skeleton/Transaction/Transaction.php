@@ -41,7 +41,7 @@ abstract class Transaction {
 	public function __construct(?int $id = null) {
 		$classname = get_called_class();
 		$this->classname = substr($classname, strpos($classname, '_') + 1);
-		$this->parallel = $this->parallel();
+		$this->pool = $this->get_pool();
 		$this->weight = $this->get_weight();
 
 		$this->trait_construct($id);
@@ -53,7 +53,7 @@ abstract class Transaction {
 	 * @access public
 	 * @param return mixed
 	 */
-	public function __get(string $key) {
+	public function __get(string $key): mixed {
 		if ($key === 'data') {
 			// If the value in 'data' can be json_decoded, do so before returning
 			// it. It will be encoded again in the save() method.
@@ -65,7 +65,7 @@ abstract class Transaction {
 		}
 
 		// temporary workaround until we somehow fix this in skeleton-database
-		if (in_array($key, ['completed', 'failed', 'recurring', 'parallel', 'locked'])) {
+		if (in_array($key, ['completed', 'failed', 'recurring', 'locked'])) {
 			return (bool)$this->trait_get($key);
 		}
 
@@ -87,7 +87,10 @@ abstract class Transaction {
 	public function save(): void {
 		// If 'data' can not be decoded, it means it has been decoded already
 		// and we should encode it again before saving it.
-		if (isset($this->details['data']) && (is_array($this->details['data']) || json_decode($this->details['data']) === null)) {
+		if (
+			isset($this->details['data']) &&
+			(is_array($this->details['data']) || json_decode($this->details['data']) === null)
+		) {
 			$this->details['data'] = json_encode($this->details['data']);
 		}
 
@@ -110,14 +113,15 @@ abstract class Transaction {
 	}
 
 	/**
-	 * parallel()
-	 * Defaults to true, it can be overriden in any transaction and return false
-	 * if the transaction should not be run in parallel.
+	 * Assign this transaction to a specific pool, transactions within a pool
+	 * will be executed one after another per pool.
+	 *
+	 * A null value for pool is the general non-restricted pool.
 	 *
 	 * @access public
 	 */
-	public function parallel(): bool {
-		return true;
+	public function get_pool(): ?string {
+		return null;
 	}
 
 	/**
@@ -126,11 +130,18 @@ abstract class Transaction {
 	 * @access public
 	 */
 	public function schedule(?string $time = null): void {
-		if (!isset($this->scheduled_at) || $this->scheduled_at === null || $time === null) {
+		if (
+			!isset($this->scheduled_at) ||
+			$this->scheduled_at === null ||
+			$time === null
+		) {
 			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
 
-		if ($time !== null && new \DateTime($this->scheduled_at) < (new \DateTime($this->scheduled_at))->modify($time)) {
+		if (
+			$time !== null &&
+			new \DateTime($this->scheduled_at) < (new \DateTime($this->scheduled_at))->modify($time)
+		) {
 			$this->scheduled_at = (new \DateTime())->format('Y-m-d H:i:s');
 		}
 
@@ -162,14 +173,14 @@ abstract class Transaction {
 	 * @return bool $scheduled
 	 */
 	public function is_scheduled(): bool {
-		if ((bool) $this->completed === true) {
+		if ((bool)$this->completed === true) {
 			return false;
 		}
 
 		if (
 			isset($this->scheduled_at) === true
 			&& new \DateTime($this->scheduled_at) >= new \DateTime()
-			&& (bool) $this->locked === false
+			&& (bool)$this->locked === false
 		) {
 			return true;
 		}
@@ -190,7 +201,7 @@ abstract class Transaction {
 		// refresh the current object's details before verifying the lock status
 		$this->get_details();
 
-		if ((bool) $this->locked === true) {
+		if ((bool)$this->locked === true) {
 			\Skeleton\Lock\Handler::get()::release($lock_name);
 			throw new Exception\Locked();
 		}
@@ -241,13 +252,13 @@ abstract class Transaction {
 		Log::create($this, false, $output, null, $date);
 
 		// Don't mark this transaction as completed if it has been rescheduled.
-		if ((bool) $this->rescheduled === true) {
+		if ((bool)$this->rescheduled === true) {
 			return;
 		}
 
 		$this->failed = false;
 
-		if ((bool) $this->recurring === false) {
+		if ((bool)$this->recurring === false) {
 			$this->completed = true;
 		}
 
@@ -268,7 +279,7 @@ abstract class Transaction {
 	 * Get transaction logs
 	 *
 	 * @access public
-	 * @return array $transaction_logs
+	 * @return array<Log> $transaction_logs
 	 */
 	public function get_transaction_logs(?int $limit = null): array {
 		return Log::get_by_transaction($this, $limit);
@@ -280,7 +291,7 @@ abstract class Transaction {
 	 * @param Transaction id
 	 * @access public
 	 */
-	public static function get_by_id(int $id) {
+	public static function get_by_id(int $id): self {
 		$db = Database::get();
 		$classname = $db->get_one('SELECT classname FROM transaction WHERE id = ?', [$id]);
 
@@ -295,6 +306,7 @@ abstract class Transaction {
 	/**
 	 * Get transactions by classname
 	 *
+	 * @return array<self> List of Transactions with the given classname
 	 * @access public
 	 */
 	public static function get_by_classname(string $classname, ?int $limit = null): array {
@@ -315,22 +327,36 @@ abstract class Transaction {
 	/**
 	 * Get runnable transactions
 	 *
+	 * @param array<string> $exclude_pools List of pools to exclude
+	 * @return array<self> List of runnable Transactions
 	 * @access public
 	 */
-	public static function get_runnable(): array {
+	public static function get_runnable(array $exclude_pools = []): array {
+		$exclude_pool_sql = '';
+
+		if (count($exclude_pools) > 0) {
+			$exclude_pool_sql = 'AND (pool NOT IN ("' . implode('", "', $exclude_pools) . '") OR pool IS NULL)';
+		}
+
 		$db = Database::get();
+
 		$ids = $db->get_column('
 			SELECT id FROM
-				(	SELECT id, failed, locked, scheduled_at, weight
+				(
+					SELECT
+						id, failed, locked, scheduled_at, weight, pool,
+						ROW_NUMBER() OVER (PARTITION BY pool ORDER BY id) AS rn
 					FROM transaction
 					WHERE 1
 					AND scheduled_at < NOW()
 					AND completed = 0
 				) AS transaction
 			WHERE 1
+			AND (pool IS NULL OR rn = 1)
 			AND scheduled_at IS NOT NULL
 			AND failed = 0
 			AND locked = 0
+			' . $exclude_pool_sql . '
 			ORDER BY weight ASC, scheduled_at, id
 			LIMIT ?;
 		', [ Config::$max_processes ]);
@@ -346,24 +372,35 @@ abstract class Transaction {
 	public static function count_runnable(): int {
 		$db = Database::get();
 
-		return (int) $db->get_one('
-			SELECT count(1) FROM
-				(SELECT failed, locked, scheduled_at FROM transaction WHERE scheduled_at < NOW() AND completed = 0) AS transaction
+		return (int)$db->get_one('
+			SELECT count(1) FROM (
+				SELECT failed, locked, scheduled_at
+				FROM transaction
+				WHERE scheduled_at < NOW() AND completed = 0
+			) AS transaction
 			WHERE 1
 			AND scheduled_at IS NOT NULL
 			AND failed = 0
-			AND locked = 0;
+			AND locked = 0
 		');
 	}
 
 	/**
 	 * Get scheduled transactions
 	 *
+	 * @return array<self> List of scheduled Transactions
 	 * @access public
 	 */
 	public static function get_scheduled(): array {
 		$db = Database::get();
-		$ids = $db->get_column('SELECT id FROM transaction WHERE scheduled_at > NOW();', []);
+		$ids = $db->get_column('
+			SELECT id
+			FROM transaction
+			WHERE 1
+			AND scheduled_at > NOW()
+			AND completed = 0
+			ORDER BY weight ASC, scheduled_at, id
+		');
 
 		return self::get_by_ids($ids);
 	}
@@ -371,11 +408,12 @@ abstract class Transaction {
 	/**
 	 * Get running
 	 *
+	 * @return array<self> List of running Transactions
 	 * @access public
 	 */
 	public static function get_running(): array {
 		$db = Database::get();
-		$ids = $db->get_column('SELECT id FROM transaction WHERE locked = 1 AND completed = 0 ORDER BY parallel ASC;', []);
+		$ids = $db->get_column('SELECT id FROM transaction WHERE locked = 1 AND completed = 0', []);
 
 		return self::get_by_ids($ids);
 	}
@@ -394,7 +432,7 @@ abstract class Transaction {
 	 * Get failed recurring
 	 *
 	 * @access public
-	 * @return array $transactions
+	 * @return array<self> List of failed recurring Transactions
 	 */
 	public static function get_failed_recurring(): array {
 		$db = Database::get();

@@ -74,6 +74,35 @@ Show the log of a transaction
 
     skeleton transaction:log <transaction_id_or_classname>
 
+## Transaction concurrency
+
+By default, a transaction will be running with `pool` set to null. All
+transactions with `pool` null will run concurrently and as soon as a slot
+becomes available.
+
+Sometimes, however, transactions should not be run at the same time as another
+transaction, for example because it is using a resource of which there is only
+one. This can be fixed by assigning both of these transactions to run in the
+same pool. Transactions with a non-null `pool` will run sequentially within
+their pool.
+
+To assign your transaction to a pool, override the `get_pool()` method:
+
+    public function get_pool(): string {
+        return 'mypool';
+    }
+
+## Transaction priority
+
+Some transactions are more important than others. You can (de-)prioritise a
+transaction by modifying its weight. A lower weight will make the transaction
+float higher up in the queue with a higher priority, a higher weight will push
+it down and de-prioritise. The default weight is set to 10.
+
+    public function get_weight(): int {
+        return 42;
+    }
+
 ## Monitor the daemon with Nagios
 
 Skeleton Transaction Daemon can be monitored via its status file. The status

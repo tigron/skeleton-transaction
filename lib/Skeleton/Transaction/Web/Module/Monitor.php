@@ -20,12 +20,19 @@ class Monitor extends Module {
 	 * @access public
 	 */
 	public function display(): void {
-		$status = Daemon::status();
-
 		$authorized = $this->authenticate();
 		if (!$authorized) {
 			header('HTTP/1.0 403 Access denied');
-			exit;
+			echo 'Access denied';
+			return;
+		}
+
+		try {
+			$status = Daemon::status();
+		} catch (\Exception $e) {
+			header('HTTP/1.0 500 Daemon not running');
+			echo 'Daemon not running';
+			return;
 		}
 
 		$error = 200;

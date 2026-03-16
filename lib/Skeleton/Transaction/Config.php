@@ -42,4 +42,11 @@ class Config {
 	 * @access public
 	 */
 	public static ?string $monitor_authentication = null;
+
+	/**
+	 * Log file
+	 *
+	 * @access public
+	 */
+	public static ?string $log_file = null;
 }
